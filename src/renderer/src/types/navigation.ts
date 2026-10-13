@@ -29,6 +29,6 @@ export const VIEW_META: Record<ViewId, { label: string; title: string; subtitle:
     settings: {
         label: "Settings",
         title: "Settings",
-        subtitle: "Workspace, scanner, and diagnostics",
+        subtitle: "Workspace, applications, and about",
     },
 };

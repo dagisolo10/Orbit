@@ -1,8 +1,9 @@
 import { OrbitContext, type LoadStatus, type OrbitContextValue, type TechnologyStat } from "@/contexts/orbit-context";
 import { useToast } from "@/contexts/toast-context";
 import { useLocalStorage } from "@/hooks/use-local-storage";
-import { loadProjects, reScanProjects, type OrbitError } from "@/services/orbit";
+import { loadProjects, loadProjectsRoot, pickDirectory, reScanProjects, saveProjectsRoot, type OrbitError } from "@/services/orbit";
 import type { OrbitSnapshot, Project, SortKey, Technology, TechnologyCategory, ViewMode, Workspace } from "@/types/project";
+import type { ProjectsRootState } from "@shared/types/settings";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export function OrbitProvider({ children }: { children: ReactNode }) {
@@ -12,6 +13,8 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     const [snapshot, setSnapshot] = useState<OrbitSnapshot | null>(null);
     const [error, setError] = useState<OrbitError | null>(null);
     const [reScanning, setReScanning] = useState(false);
+    const [projectsRoot, setProjectsRoot] = useState<ProjectsRootState | null>(null);
+    const [changingProjectsRoot, setChangingProjectsRoot] = useState(false);
     const [query, setQuery] = useState("");
     const [activeTech, setActiveTech] = useState<Technology | null>(null);
     const [activeCategory, setActiveCategory] = useState<TechnologyCategory | null>(null);
@@ -23,12 +26,37 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     // Prevents overlapping scans (StrictMode's double effect, rapid clicks, etc.).
     const scanInFlight = useRef(false);
 
+    const fetchProjectsRoot = useCallback(async (): Promise<ProjectsRootState | null> => {
+        const result = await loadProjectsRoot();
+        if (result.ok) {
+            setProjectsRoot(result.value);
+            return result.value;
+        }
+        return null;
+    }, []);
+
     const load = useCallback(async () => {
         if (scanInFlight.current) return;
         scanInFlight.current = true;
 
         setStatus("loading");
         setError(null);
+
+        const root = await fetchProjectsRoot();
+
+        // A configured-but-missing root is a recoverable, user-actionable state:
+        // surface it directly instead of a generic scan failure.
+        if (root && !root.available) {
+            scanInFlight.current = false;
+            setSnapshot(null);
+            setError({
+                code: "SCAN_FAILED",
+                message: "Projects folder unavailable",
+                detail: `Orbit could not access “${root.path}”. It may have been moved, renamed, or deleted. Choose another folder to continue.`,
+            });
+            setStatus("error");
+            return;
+        }
 
         const result = await loadProjects();
         scanInFlight.current = false;
@@ -42,7 +70,7 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
         setSnapshot(null);
         setError(result.error);
         setStatus("error");
-    }, []);
+    }, [fetchProjectsRoot]);
 
     useEffect(() => {
         void load();
@@ -51,6 +79,37 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     const reload = useCallback(() => {
         void load();
     }, [load]);
+
+    const changeProjectsRoot = useCallback(async () => {
+        if (changingProjectsRoot || scanInFlight.current) return;
+        setChangingProjectsRoot(true);
+
+        try {
+            const picked = await pickDirectory(projectsRoot?.path);
+
+            if (!picked.ok) {
+                toast({ title: picked.error.message, description: picked.error.detail, tone: "error" });
+                return;
+            }
+
+            // Cancelled — leave the current selection untouched.
+            if (picked.value === null) return;
+
+            const saved = await saveProjectsRoot(picked.value);
+
+            if (!saved.ok) {
+                toast({ title: saved.error.message, description: saved.error.detail, tone: "error" });
+                await fetchProjectsRoot();
+                return;
+            }
+
+            setProjectsRoot(saved.value);
+            toast({ title: "Projects folder updated", description: saved.value.path, tone: "success" });
+            await load();
+        } finally {
+            setChangingProjectsRoot(false);
+        }
+    }, [changingProjectsRoot, fetchProjectsRoot, load, projectsRoot?.path, toast]);
 
     const reScan = useCallback(async () => {
         if (scanInFlight.current) return;
@@ -145,12 +204,15 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
             setViewMode,
             clearFilters,
             technologies,
+            projectsRoot,
             dismissError,
             setActiveTech,
             toggleFavorite,
             activeCategory,
             hasActiveFilters,
             setActiveCategory,
+            changeProjectsRoot,
+            changingProjectsRoot,
         }),
         [
             error,
@@ -173,9 +235,12 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
             dismissError,
             clearFilters,
             technologies,
+            projectsRoot,
             toggleFavorite,
             activeCategory,
             hasActiveFilters,
+            changeProjectsRoot,
+            changingProjectsRoot,
         ],
     );
 

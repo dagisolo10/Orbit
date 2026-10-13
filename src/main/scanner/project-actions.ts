@@ -1,3 +1,5 @@
+import { findPreset, parseCommandLine, resolvePreference } from "@main/launcher/apps";
+import type { LaunchKind, LaunchPreference, LaunchPreferences } from "@shared/types/settings";
 import type { ProjectOpenTarget } from "@shared/types/project";
 import { spawn } from "child_process";
 import { shell } from "electron";
@@ -8,8 +10,12 @@ import path from "path";
  * Opens a scanned project in an external editor, terminal, or file manager.
  *
  * Filesystem access and process spawning stay in the main process; the renderer
- * only passes a project path and a target. Candidates are probed in order and
+ * only passes a project path and a target. When the user has chosen a preferred
+ * application it is used directly; otherwise candidates are probed in order and
  * the first available application wins, so nothing is assumed about the host.
+ *
+ * No spawn ever runs through a shell, so arguments (including user-configured
+ * custom commands) can never be interpreted as shell syntax.
  */
 
 export class ProjectActionError extends Error {
@@ -22,7 +28,6 @@ export class ProjectActionError extends Error {
 type Candidate = {
     command: string;
     args: string[];
-    shell?: boolean;
     /** Some launchers (`open -a`, `wt -d`, `cmd`) expect the directory as an argument. */
     appendPath?: boolean;
 };
@@ -43,15 +48,15 @@ async function assertDirectory(projectPath: string): Promise<void> {
     }
 }
 
-export async function openProject(projectPath: string, target: ProjectOpenTarget): Promise<void> {
+export async function openProject(projectPath: string, target: ProjectOpenTarget, preferences?: LaunchPreferences): Promise<void> {
     await assertDirectory(projectPath);
 
     switch (target) {
         case "editor":
-            await openInEditor(projectPath);
+            await openTarget("editor", projectPath, preferences?.editor);
             return;
         case "terminal":
-            await openInTerminal(projectPath);
+            await openTarget("terminal", projectPath, preferences?.terminal);
             return;
         case "file-manager":
             shell.showItemInFolder(projectPath);
@@ -59,6 +64,44 @@ export async function openProject(projectPath: string, target: ProjectOpenTarget
         default:
             throw new ProjectActionError("Orbit does not support that action.");
     }
+}
+
+async function openTarget(kind: LaunchKind, projectPath: string, preference: LaunchPreference | undefined): Promise<void> {
+    // An explicit choice is honored strictly: if it can no longer be launched we
+    // report that instead of silently opening a different application.
+    if (preference && preference.mode !== "auto") {
+        const resolved = await resolvePreference(preference, kind, projectPath, projectPath);
+
+        if (!resolved) {
+            throw new ProjectActionError(`Orbit could not launch ${preferenceLabel(kind, preference)}. It may have moved or been uninstalled — choose another application in Settings.`);
+        }
+
+        const launched = await trySpawn({ command: resolved.command, args: resolved.args }, resolved.cwd);
+        if (!launched) {
+            throw new ProjectActionError(`Orbit could not launch ${preferenceLabel(kind, preference)}. Check that it is installed and try again.`);
+        }
+        return;
+    }
+
+    const candidates = kind === "editor" ? [...envCandidates(), ...editorCandidates()] : terminalCandidates(projectPath);
+    for (const candidate of candidates) {
+        if (await trySpawn(candidate, projectPath)) return;
+    }
+
+    throw new ProjectActionError(
+        kind === "editor" ? "No code editor was found. Install VS Code, or set the EDITOR or VISUAL environment variable." : "No supported terminal emulator was found on this system.",
+    );
+}
+
+function preferenceLabel(kind: LaunchKind, preference: LaunchPreference): string {
+    if (preference.mode === "preset") {
+        return findPreset(kind, preference.id)?.label ?? "your preferred application";
+    }
+    if (preference.mode === "custom") {
+        const [command] = parseCommandLine(preference.command);
+        return command ? `the custom command “${command}”` : "your custom command";
+    }
+    return "your preferred application";
 }
 
 function envCandidates(): Candidate[] {
@@ -88,11 +131,12 @@ function editorCandidates(): Candidate[] {
         { command: "code-insiders", args: [] },
         { command: "cursor", args: [] },
         { command: "windsurf", args: [] },
+        { command: "zed", args: [] },
         { command: "subl", args: [] },
     ];
 }
 
-function terminalCandidates(): Candidate[] {
+function terminalCandidates(projectPath: string): Candidate[] {
     if (process.platform === "darwin") {
         return [
             { command: "open", args: ["-a", "Terminal"], appendPath: true },
@@ -109,33 +153,17 @@ function terminalCandidates(): Candidate[] {
 
     return [
         { command: "xdg-terminal-exec", args: [] },
-        { command: "gnome-terminal", args: [] },
-        { command: "konsole", args: [] },
-        { command: "xfce4-terminal", args: [] },
-        { command: "alacritty", args: [] },
-        { command: "kitty", args: [] },
-        { command: "wezterm", args: ["start"] },
-        { command: "foot", args: [] },
-        { command: "tilix", args: [] },
+        { command: "gnome-terminal", args: [`--working-directory=${projectPath}`] },
+        { command: "konsole", args: ["--workdir", projectPath] },
+        { command: "kitty", args: ["--directory", projectPath] },
+        { command: "alacritty", args: ["--working-directory", projectPath] },
+        { command: "wezterm", args: ["start", "--cwd", projectPath] },
+        { command: "xfce4-terminal", args: [`--working-directory=${projectPath}`] },
+        { command: "foot", args: [`--working-directory=${projectPath}`] },
+        { command: "tilix", args: [`--working-directory=${projectPath}`] },
         { command: "x-terminal-emulator", args: [] },
         { command: "xterm", args: [] },
     ];
-}
-
-async function openInEditor(projectPath: string): Promise<void> {
-    for (const candidate of [...envCandidates(), ...editorCandidates()]) {
-        if (await trySpawn(candidate, projectPath)) return;
-    }
-
-    throw new ProjectActionError("No code editor was found. Install VS Code, or set the EDITOR or VISUAL environment variable.");
-}
-
-async function openInTerminal(projectPath: string): Promise<void> {
-    for (const candidate of terminalCandidates()) {
-        if (await trySpawn(candidate, projectPath)) return;
-    }
-
-    throw new ProjectActionError("No supported terminal emulator was found on this system.");
 }
 
 function trySpawn(candidate: Candidate, cwd: string): Promise<boolean> {
@@ -152,7 +180,7 @@ function trySpawn(candidate: Candidate, cwd: string): Promise<boolean> {
         const args = candidate.appendPath ? [...candidate.args, cwd] : candidate.args;
 
         try {
-            const child = spawn(candidate.command, args, { cwd, detached: true, stdio: "ignore", shell: candidate.shell ?? false });
+            const child = spawn(candidate.command, args, { cwd, detached: true, stdio: "ignore", shell: false });
             child.once("error", () => finish(false));
             child.once("spawn", () => finish(true, child));
         } catch {

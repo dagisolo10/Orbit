@@ -1,4 +1,5 @@
 import { ScanErrorBanner, ScannerOfflineState } from "@/components/common/scanner-offline-state";
+import { ChangeFolderButton } from "@/components/common/change-folder-button";
 import { ProjectDetails } from "@/components/projects/project-detail";
 import { ProjectGrid } from "@/components/projects/project-grid";
 import { ProjectList } from "@/components/projects/project-list";
@@ -11,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TechBadge } from "@/components/ui/tech-badge";
 import { useOrbit } from "@/contexts/orbit-context";
 import { useVisibleProjects } from "@/hooks/use-visible-projects";
-import { pluralize } from "@/lib/format";
+import { pluralize, shortenPath } from "@/lib/format";
 import { getCategoryMeta } from "@/lib/tech";
 import { cn } from "@/lib/utils";
 import type { Project, ProjectScope, SortKey, ViewMode } from "@/types/project";
@@ -52,10 +53,14 @@ export function ProjectExplorer({ scope }: { scope: ProjectScope }) {
         clearFilters,
         hasActiveFilters,
         workspaces,
+        snapshot,
+        projectsRoot,
     } = useOrbit();
     const visible = useVisibleProjects(scope);
     const [detailsProject, setDetailsProject] = useState<Project | null>(null);
     const [page, setPage] = useState(1);
+
+    const rootPath = projectsRoot?.path ?? snapshot?.rootPath ?? null;
 
     useEffect(() => {
         setPage(1);
@@ -79,13 +84,21 @@ export function ProjectExplorer({ scope }: { scope: ProjectScope }) {
         return (
             <EmptyState
                 icon={FolderSearch}
-                title="No projects found yet"
-                description="Orbit scans your projects directory for package.json files. Add a project, then run a re-scan to populate your workspace."
+                title="No projects found"
+                description={
+                    <>
+                        Orbit scanned <span className="font-mono text-foreground/80">{rootPath ? shortenPath(rootPath, 46) : "your projects directory"}</span> and found no{" "}
+                        <span className="font-mono">package.json</span> files. If your projects live somewhere else, pick a different folder.
+                    </>
+                }
                 action={
-                    <Button variant="primary" onClick={reScan} disabled={reScanning}>
-                        <RefreshCw className={cn("size-3.5", reScanning && "animate-spin")} />
-                        {reScanning ? "Scanning…" : "Re-scan workspace"}
-                    </Button>
+                    <>
+                        <ChangeFolderButton />
+                        <Button variant="secondary" onClick={reScan} disabled={reScanning}>
+                            <RefreshCw className={cn("size-3.5", reScanning && "animate-spin")} />
+                            {reScanning ? "Scanning…" : "Re-scan"}
+                        </Button>
+                    </>
                 }
             />
         );

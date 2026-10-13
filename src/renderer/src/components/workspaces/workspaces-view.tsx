@@ -1,4 +1,5 @@
 import { ScanErrorBanner, ScannerOfflineState } from "@/components/common/scanner-offline-state";
+import { ChangeFolderButton } from "@/components/common/change-folder-button";
 import { ProjectDetails } from "@/components/projects/project-detail";
 import { ProjectGrid } from "@/components/projects/project-grid";
 import { ProjectList } from "@/components/projects/project-list";
@@ -47,10 +48,15 @@ export function WorkspacesView() {
         setQuery,
         clearFilters,
         hasActiveFilters,
+        allProjects,
+        snapshot,
+        projectsRoot,
     } = useOrbit();
 
     const term = query.trim().toLowerCase();
     const totalProjects = useMemo(() => workspaces.reduce((sum, workspace) => sum + workspace.projects.length, 0), [workspaces]);
+    const rootPath = projectsRoot?.path ?? snapshot?.rootPath ?? null;
+    const noProjectsAtAll = allProjects.length === 0;
 
     const groups = useMemo(() => {
         const matches = (project: Project) => {
@@ -101,12 +107,24 @@ export function WorkspacesView() {
             <EmptyState
                 icon={Boxes}
                 title="No workspaces found"
-                description="Orbit groups projects that live inside a workspace root — a package.json with a workspaces field. Add one to your projects directory, then run a re-scan."
+                description={
+                    noProjectsAtAll ? (
+                        <>
+                            Orbit scanned <span className="font-mono text-foreground/80">{rootPath ? shortenPath(rootPath, 46) : "your projects directory"}</span> and found no projects at all. If your
+                            projects live somewhere else, pick a different folder.
+                        </>
+                    ) : (
+                        "Orbit groups projects that live inside a workspace root — a package.json with a workspaces field. Add one to your projects directory, then run a re-scan."
+                    )
+                }
                 action={
-                    <Button variant="primary" onClick={reScan} disabled={reScanning}>
-                        <RefreshCw className={cn("size-3.5", reScanning && "animate-spin")} />
-                        {reScanning ? "Scanning…" : "Re-scan workspace"}
-                    </Button>
+                    <>
+                        {noProjectsAtAll ? <ChangeFolderButton /> : null}
+                        <Button variant={noProjectsAtAll ? "secondary" : "primary"} onClick={reScan} disabled={reScanning}>
+                            <RefreshCw className={cn("size-3.5", reScanning && "animate-spin")} />
+                            {reScanning ? "Scanning…" : "Re-scan workspace"}
+                        </Button>
+                    </>
                 }
             />
         );

@@ -15,7 +15,7 @@ asarUnpack:
 win:
     executableName: Orbit
 nsis:
-    artifactName: ${name}-${version}-setup.${ext}
+    artifactName: ${productName}-${version}-setup.${ext}
     shortcutName: ${productName}
     uninstallDisplayName: ${productName}
     createDesktopShortcut: always
@@ -29,22 +29,24 @@ mac:
         - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
     notarize: false
 dmg:
-    artifactName: ${name}-${version}.${ext}
+    artifactName: ${productName}-${version}.${ext}
 linux:
     target:
         - AppImage
-        - snap
         - deb
+        - pacman
     maintainer: Dagmawi Solomon <dagisolo1023@gmail.com>
     category: Development
     syncDesktopName: true
     synopsis: Local project workspace for developers
     description: Orbit scans a directory on your machine, detects the technologies each project uses, and presents everything in a fast, searchable, offline dashboard.
 appImage:
-    artifactName: ${name}-${version}.${ext}
+    artifactName: ${productName}-${version}.${ext}
+deb:
+    artifactName: ${productName}-${version}.${ext}
 pacman:
     packageName: orbit
-    artifactName: ${name}-${version}.${ext}
+    artifactName: ${productName}-${version}.${ext}
     depends:
         - c-ares
         - ffmpeg

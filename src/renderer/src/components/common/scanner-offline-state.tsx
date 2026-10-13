@@ -1,9 +1,12 @@
 import { Button } from "@/components/ui/button";
+import { useOrbit } from "@/contexts/orbit-context";
 import { hasPreloadBridge, type OrbitError } from "@/services/orbit";
-import { RefreshCw, TriangleAlert, X } from "lucide-react";
+import { FolderSearch, RefreshCw, TriangleAlert, X } from "lucide-react";
 
 export function ScannerOfflineState({ error, onRetry }: { error: OrbitError; onRetry: () => void }) {
     const bridgeOnline = hasPreloadBridge();
+    const { projectsRoot, changeProjectsRoot, changingProjectsRoot } = useOrbit();
+    const rootUnavailable = Boolean(projectsRoot && !projectsRoot.available);
 
     return (
         <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/2">
@@ -22,12 +25,20 @@ export function ScannerOfflineState({ error, onRetry }: { error: OrbitError; onR
                     <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{error.detail ?? "Orbit could not read your workspace."}</p>
 
                     <p className="mt-3 text-xs text-muted-foreground">
-                        {bridgeOnline
-                            ? "The main process could not complete the scan. Check the projects directory and try again."
-                            : "The renderer could not reach the main process. Rebuild the app so the preload script is loaded."}
+                        {!bridgeOnline
+                            ? "The renderer could not reach the main process. Rebuild the app so the preload script is loaded."
+                            : rootUnavailable
+                              ? "Pick the folder that contains your projects, or retry after moving it back."
+                              : "The main process could not complete the scan. Check the projects directory and try again."}
                     </p>
 
                     <div className="mt-5 flex flex-wrap items-center gap-3">
+                        {rootUnavailable ? (
+                            <Button variant="primary" size="sm" onClick={changeProjectsRoot} disabled={changingProjectsRoot}>
+                                <FolderSearch className={changingProjectsRoot ? "size-3.5 animate-pulse" : "size-3.5"} />
+                                {changingProjectsRoot ? "Opening…" : "Choose another folder"}
+                            </Button>
+                        ) : null}
                         <Button variant="secondary" size="sm" onClick={onRetry}>
                             <RefreshCw className="size-3.5" />
                             Retry scan

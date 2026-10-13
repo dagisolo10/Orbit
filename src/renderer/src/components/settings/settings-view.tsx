@@ -1,178 +1,186 @@
+import logo from "@/assets/logo.png";
+import { LaunchPreferenceSetting, preferenceLabel } from "@/components/settings/launch-preference";
+import { SettingRow, SettingSection } from "@/components/settings/setting-row";
 import { Button } from "@/components/ui/button";
 import { useOrbit } from "@/contexts/orbit-context";
+import { useToast } from "@/contexts/toast-context";
 import { pluralize } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { probeBridge, type BridgeProbe, type OrbitError } from "@/services/orbit";
-import { CircleCheck, Cpu, FolderOpen, MonitorSmartphone, Palette, RefreshCw, ShieldCheck, TriangleAlert, type LucideIcon } from "lucide-react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { loadAppInfo, loadLaunchApps, loadLaunchPreferences, openExternal, saveLaunchPreference } from "@/services/orbit";
+import type { AppInfo, LaunchAppCatalog, LaunchKind, LaunchPreference, LaunchPreferences } from "@shared/types/settings";
+import { BookOpen, Code, FolderOpen, FolderSearch, FolderTree, GitBranch, Palette, RefreshCw, Terminal, TriangleAlert } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
-type ProbeState = { status: "loading" } | { status: "ok"; value: BridgeProbe } | { status: "error"; error: OrbitError };
+const DOCS_URL = "https://orbit.dagidev.com";
+const REPO_URL = "https://github.com/dagisolo10/Orbit";
+
+const AUTO: LaunchPreference = { mode: "auto" };
 
 export function SettingsView() {
-    const { snapshot, reScan, reScanning, status, projects } = useOrbit();
-    const [probe, setProbe] = useState<ProbeState>({ status: "loading" });
+    const { toast } = useToast();
+    const { snapshot, reScan, reScanning, status, projects, projectsRoot, changingProjectsRoot, changeProjectsRoot } = useOrbit();
 
-    const runProbe = useCallback(() => {
-        setProbe({ status: "loading" });
-        void probeBridge().then((result) => {
-            setProbe(result.ok ? { status: "ok", value: result.value } : { status: "error", error: result.error });
-        });
-    }, []);
+    const [catalog, setCatalog] = useState<LaunchAppCatalog | null>(null);
+    const [preferences, setPreferences] = useState<LaunchPreferences | null>(null);
+    const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
+    const [savingKind, setSavingKind] = useState<LaunchKind | null>(null);
 
     useEffect(() => {
-        runProbe();
-    }, [runProbe]);
+        let cancelled = false;
 
-    const versions = typeof window !== "undefined" ? window.electron?.process.versions : undefined;
-    const platform = typeof window !== "undefined" ? window.electron?.process.platform : undefined;
-    const rootPath = snapshot?.rootPath ?? null;
+        void (async () => {
+            const [appsResult, prefsResult, infoResult] = await Promise.all([loadLaunchApps(), loadLaunchPreferences(), loadAppInfo()]);
+            if (cancelled) return;
+
+            if (appsResult.ok) setCatalog(appsResult.value);
+            else toast({ title: appsResult.error.message, description: appsResult.error.detail, tone: "error" });
+
+            if (prefsResult.ok) setPreferences(prefsResult.value);
+            else toast({ title: prefsResult.error.message, description: prefsResult.error.detail, tone: "error" });
+
+            if (infoResult.ok) setAppInfo(infoResult.value);
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [toast]);
+
+    const changePreference = useCallback(
+        async (kind: LaunchKind, preference: LaunchPreference): Promise<boolean> => {
+            setSavingKind(kind);
+            const result = await saveLaunchPreference(kind, preference);
+            setSavingKind(null);
+
+            if (!result.ok) {
+                toast({ title: result.error.message, description: result.error.detail, tone: "error" });
+                return false;
+            }
+
+            setPreferences(result.value);
+            const options = kind === "editor" ? (catalog?.editors ?? []) : (catalog?.terminals ?? []);
+            toast({ title: kind === "editor" ? "Editor preference updated" : "Terminal preference updated", description: preferenceLabel(preference, options), tone: "success" });
+            return true;
+        },
+        [catalog, toast],
+    );
+
+    const openLink = useCallback(
+        async (url: string) => {
+            const result = await openExternal(url);
+            if (!result.ok) toast({ title: result.error.message, description: result.error.detail, tone: "error" });
+        },
+        [toast],
+    );
+
+    const rootPath = projectsRoot?.path ?? snapshot?.rootPath ?? null;
+    const rootAvailable = projectsRoot ? projectsRoot.available : Boolean(snapshot?.rootPath);
+    const rootIsCustom = projectsRoot?.isCustom ?? false;
 
     const scannerValue = status === "loading" ? "Scanning…" : status === "error" ? "Not connected" : pluralize(projects.length, "project");
 
-    const runtime = [
-        { label: "Electron", value: versions?.["electron"] },
-        { label: "Chromium", value: versions?.["chrome"] },
-        { label: "Node.js", value: versions?.["node"] },
-    ];
+    const editorOptions = catalog?.editors ?? [];
+    const terminalOptions = catalog?.terminals ?? [];
+    const editorPreference = preferences?.editor ?? AUTO;
+    const terminalPreference = preferences?.terminal ?? AUTO;
 
     return (
         <div className="mx-auto max-w-3xl space-y-5">
-            <SettingSection title="Workspace" description="Where Orbit looks for projects and how it scans them.">
+            <SettingSection title="General" description="Where Orbit looks for projects and how it behaves.">
                 <SettingRow
                     icon={FolderOpen}
                     label="Projects directory"
                     value={rootPath ?? "Not configured"}
                     mono={Boolean(rootPath)}
+                    badge={
+                        rootPath ? (
+                            rootAvailable ? (
+                                <span className="rounded-md border border-white/8 bg-white/4 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{rootIsCustom ? "Custom" : "Default"}</span>
+                            ) : (
+                                <span className="rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300">Unavailable</span>
+                            )
+                        ) : null
+                    }
                     action={
-                        <Button variant="secondary" size="sm" disabled title="Requires settings:get and settings:set IPC handlers">
-                            Change directory
+                        <Button variant="secondary" size="sm" onClick={changeProjectsRoot} disabled={changingProjectsRoot}>
+                            <FolderSearch className={cn("size-3.5", changingProjectsRoot && "animate-pulse")} />
+                            {changingProjectsRoot ? "Opening…" : "Change folder"}
                         </Button>
                     }
                 />
+                {rootPath && !rootAvailable ? (
+                    <div className="flex items-start gap-2.5 px-4 py-3">
+                        <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-amber-300" strokeWidth={1.9} />
+                        <p className="text-xs leading-relaxed text-amber-200/90">
+                            Orbit could not access this folder. It may have been moved, renamed, or deleted. Choose another folder to keep scanning your projects.
+                        </p>
+                    </div>
+                ) : null}
                 <SettingRow
-                    icon={ShieldCheck}
-                    label="Scanner"
+                    icon={RefreshCw}
+                    label="Project scan"
                     value={scannerValue}
                     action={
                         <Button variant="secondary" size="sm" onClick={reScan} disabled={reScanning}>
                             <RefreshCw className={cn("size-3.5", reScanning && "animate-spin")} />
-                            {reScanning ? "Scanning…" : "Rescan"}
+                            {reScanning ? "Scanning…" : "Re-scan"}
                         </Button>
                     }
                 />
+                <SettingRow icon={Palette} label="Theme" value="Dark — Orbit is designed as a dark-only workspace." />
             </SettingSection>
 
-            <SettingSection title="Appearance" description="Orbit renders a dark workspace tuned for long sessions.">
-                <SettingRow
-                    icon={Palette}
-                    label="Theme"
-                    value="Dark"
-                    action={<span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Active</span>}
+            <SettingSection title="Applications" description="Which applications Orbit uses to open your projects.">
+                <LaunchPreferenceSetting
+                    icon={Code}
+                    label="Code editor"
+                    kind="editor"
+                    options={editorOptions}
+                    preference={editorPreference}
+                    saving={savingKind === "editor"}
+                    onChange={(preference) => changePreference("editor", preference)}
                 />
-                <SettingRow
-                    icon={Palette}
-                    label="Follow system appearance"
-                    value="Not implemented"
-                    action={
-                        <Button variant="secondary" size="sm" disabled>
-                            Planned
-                        </Button>
-                    }
+                <LaunchPreferenceSetting
+                    icon={Terminal}
+                    label="Terminal"
+                    kind="terminal"
+                    options={terminalOptions}
+                    preference={terminalPreference}
+                    saving={savingKind === "terminal"}
+                    onChange={(preference) => changePreference("terminal", preference)}
                 />
+                <SettingRow icon={FolderTree} label="File manager" value="System default — Orbit reveals projects with your OS file manager." />
             </SettingSection>
 
-            <SettingSection title="Diagnostics" description="Status of the renderer to main-process bridge.">
-                <div className="flex items-center gap-3 px-4 py-3">
-                    <span
-                        className={cn(
-                            "inline-flex size-9 shrink-0 items-center justify-center rounded-lg border",
-                            probe.status === "ok"
-                                ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
-                                : probe.status === "error"
-                                  ? "border-red-400/20 bg-red-400/10 text-red-300"
-                                  : "border-white/8 bg-white/3 text-muted-foreground",
-                        )}
-                    >
-                        {probe.status === "ok" ? (
-                            <CircleCheck className="size-4" strokeWidth={1.9} />
-                        ) : probe.status === "error" ? (
-                            <TriangleAlert className="size-4" strokeWidth={1.9} />
-                        ) : (
-                            <ShieldCheck className="size-4" strokeWidth={1.9} />
-                        )}
-                    </span>
+            <SettingSection title="About" description="Version and links.">
+                <div className="flex items-center gap-3.5 px-4 py-4">
+                    <img src={logo} alt="" className="size-11 shrink-0 rounded-xl border border-white/8" />
                     <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-medium text-foreground">Preload bridge</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                            {probe.status === "loading" ? "Running health check…" : probe.status === "ok" ? `ipc:check responded in ${probe.value.latencyMs} ms` : probe.error.message}
-                        </p>
+                        <p className="text-sm font-semibold text-foreground">{appInfo?.name ?? "Orbit"}</p>
+                        <p className="text-xs text-muted-foreground">Version {appInfo?.version ?? "…"} · A local workspace for your projects</p>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={runProbe} disabled={probe.status === "loading"}>
-                        <RefreshCw className={cn("size-3.5", probe.status === "loading" && "animate-spin")} />
-                        Run check
-                    </Button>
                 </div>
-
-                <div className="grid gap-2 px-4 py-3 sm:grid-cols-3">
-                    {runtime.map((item) => (
-                        <div key={item.label} className="rounded-lg border border-white/6 bg-white/2 px-3 py-2">
-                            <p className="flex items-center gap-1.5 text-[11px] font-medium tracking-wider text-muted-foreground/80 uppercase">
-                                <Cpu className="size-3" />
-                                {item.label}
-                            </p>
-                            <p className="mt-1 font-mono text-[13px] text-foreground">{item.value ?? "—"}</p>
-                        </div>
-                    ))}
-                </div>
-
                 <SettingRow
-                    icon={MonitorSmartphone}
-                    label="Platform"
-                    value={platform ?? "unknown"}
-                    mono
+                    icon={BookOpen}
+                    label="Documentation"
+                    value="orbit.dagidev.com"
                     action={
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                                void window.electron?.ipcRenderer.invoke("ipc:check");
-                            }}
-                            title="Ping the existing ipc:check channel"
-                        >
-                            Ping main
+                        <Button variant="secondary" size="sm" onClick={() => void openLink(DOCS_URL)}>
+                            Open
+                        </Button>
+                    }
+                />
+                <SettingRow
+                    icon={GitBranch}
+                    label="Source code"
+                    value="github.com/dagisolo10/Orbit"
+                    action={
+                        <Button variant="secondary" size="sm" onClick={() => void openLink(REPO_URL)}>
+                            Open
                         </Button>
                     }
                 />
             </SettingSection>
-        </div>
-    );
-}
-
-function SettingSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
-    return (
-        <section className="overflow-hidden rounded-2xl border border-white/8 bg-white/1.5">
-            <div className="border-b border-white/6 px-4 py-3">
-                <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-                {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
-            </div>
-            <div className="divide-y divide-white/6">{children}</div>
-        </section>
-    );
-}
-
-function SettingRow({ icon: Icon, label, value, mono, action }: { icon: LucideIcon; label: string; value: ReactNode; mono?: boolean; action?: ReactNode }) {
-    return (
-        <div className="flex items-center gap-3 px-4 py-3">
-            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/8 bg-white/3 text-muted-foreground">
-                <Icon className="size-4" strokeWidth={1.85} />
-            </span>
-            <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-medium text-foreground">{label}</p>
-                <p className={cn("truncate text-xs text-muted-foreground", mono && "font-mono")} title={typeof value === "string" ? value : undefined}>
-                    {value}
-                </p>
-            </div>
-            {action ? <div className="shrink-0">{action}</div> : null}
         </div>
     );
 }

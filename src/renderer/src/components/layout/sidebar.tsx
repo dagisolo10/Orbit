@@ -20,7 +20,7 @@ const NAV_ICON: Record<ViewId, LucideIcon> = {
 const PRIMARY_NAV: ViewId[] = ["overview", "projects", "workspaces", "technologies", "favorites"];
 
 export function Sidebar({ view, onNavigate }: { view: ViewId; onNavigate: (view: ViewId) => void }) {
-    const { projects, allProjects, workspaces, technologies, favorites, snapshot } = useOrbit();
+    const { projects, allProjects, workspaces, technologies, favorites, snapshot, projectsRoot } = useOrbit();
     const compact = !useMediaQuery("(min-width: 1024px)");
 
     const counts = useMemo<Partial<Record<ViewId, number>>>(
@@ -44,7 +44,13 @@ export function Sidebar({ view, onNavigate }: { view: ViewId; onNavigate: (view:
             </nav>
 
             <div className="space-y-1.5 border-t border-sidebar-border p-2.5">
-                {!compact ? <DirectoryCard rootPath={snapshot?.rootPath ?? null} /> : null}
+                {!compact ? (
+                    <DirectoryCard
+                        rootPath={projectsRoot?.path ?? snapshot?.rootPath ?? null}
+                        available={projectsRoot ? projectsRoot.available : Boolean(snapshot?.rootPath)}
+                        onNavigate={() => onNavigate("settings")}
+                    />
+                ) : null}
                 <NavItem id="settings" active={view === "settings"} compact={compact} onNavigate={onNavigate} />
             </div>
         </aside>
@@ -99,16 +105,21 @@ function NavItem({ id, active, compact, count, onNavigate }: { id: ViewId; activ
     );
 }
 
-function DirectoryCard({ rootPath }: { rootPath: string | null }) {
+function DirectoryCard({ rootPath, available, onNavigate }: { rootPath: string | null; available: boolean; onNavigate: () => void }) {
     return (
-        <div className="rounded-xl border border-white/6 bg-white/2 p-2.5">
+        <button
+            type="button"
+            onClick={onNavigate}
+            title="Change projects directory"
+            className="group w-full rounded-xl border border-white/6 bg-white/2 p-2.5 text-left outline-none transition-colors hover:border-white/12 hover:bg-white/4 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+        >
             <div className="flex items-center gap-1.5">
-                <span className={cn("size-1.5 rounded-full", rootPath ? "bg-emerald-400" : "bg-amber-400/80")} />
+                <span className={cn("size-1.5 rounded-full", available ? "bg-emerald-400" : "bg-amber-400/80")} />
                 <p className="text-[10px] font-semibold tracking-wider text-muted-foreground/80 uppercase">Projects directory</p>
             </div>
-            <p className={cn("mt-1.5 font-mono text-[11px] leading-snug break-all", rootPath ? "text-foreground/80" : "text-muted-foreground")} title={rootPath ?? undefined}>
+            <p className={cn("mt-1.5 font-mono text-[11px] leading-snug break-all", rootPath && available ? "text-foreground/80" : "text-muted-foreground")} title={rootPath ?? undefined}>
                 {rootPath ? shortenPath(rootPath, 26) : "Not configured"}
             </p>
-        </div>
+        </button>
     );
 }

@@ -1,5 +1,6 @@
 import type { OrbitError } from "@/services/orbit";
 import type { OrbitSnapshot, Project, SortKey, Technology, TechnologyCategory, ViewMode, Workspace } from "@/types/project";
+import type { ProjectsRootState } from "@shared/types/settings";
 import { createContext, useContext } from "react";
 
 export type LoadStatus = "loading" | "ready" | "error";
@@ -10,6 +11,12 @@ export type OrbitContextValue = {
     status: LoadStatus;
     snapshot: OrbitSnapshot | null;
     error: OrbitError | null;
+    /** The configured projects root, its default, and whether it is currently usable. */
+    projectsRoot: ProjectsRootState | null;
+    /** True while the native directory picker is open or the selection is being saved. */
+    changingProjectsRoot: boolean;
+    /** Opens the native picker and, on selection, persists it and re-scans. */
+    changeProjectsRoot: () => void;
     /** Standalone projects only. Workspace members live under `workspaces`. */
     projects: Project[];
     /** Every discovered project, standalone and workspace members alike. */

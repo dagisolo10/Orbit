@@ -1,6 +1,7 @@
 import type { OrbitSnapshot, ProjectOpenTarget } from "@/types/project";
+import type { AppInfo, LaunchAppCatalog, LaunchKind, LaunchPreference, LaunchPreferences, ProjectsRootState } from "@shared/types/settings";
 
-export type OrbitErrorCode = "BRIDGE_MISSING" | "SCAN_FAILED" | "OPEN_FAILED";
+export type OrbitErrorCode = "BRIDGE_MISSING" | "SCAN_FAILED" | "OPEN_FAILED" | "SETTINGS_FAILED" | "PICK_FAILED" | "LAUNCHER_FAILED" | "APP_INFO_FAILED" | "EXTERNAL_FAILED";
 
 export type OrbitError = {
     code: OrbitErrorCode;
@@ -9,8 +10,6 @@ export type OrbitError = {
 };
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: OrbitError };
-
-export type BridgeProbe = { channel: string; latencyMs: number };
 
 /**
  * Renderer-side adapter for the main-process scanner.
@@ -57,6 +56,118 @@ export async function openProject(projectPath: string, target: ProjectOpenTarget
     }
 }
 
+/** Reads the persisted projects root and whether it is currently usable. */
+export async function loadProjectsRoot(): Promise<Result<ProjectsRootState>> {
+    if (!hasPreloadBridge()) {
+        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
+    }
+
+    try {
+        const value = await window.api.invoke("settings:get-projects-root");
+        return { ok: true, value };
+    } catch (error) {
+        return { ok: false, error: { code: "SETTINGS_FAILED", message: "Orbit could not read the projects directory setting.", detail: toMessage(error) } };
+    }
+}
+
+/** Persists a user-selected projects root. The main process validates it first. */
+export async function saveProjectsRoot(rootPath: string): Promise<Result<ProjectsRootState>> {
+    if (!hasPreloadBridge()) {
+        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
+    }
+
+    try {
+        const value = await window.api.invoke("settings:set-projects-root", rootPath);
+        return { ok: true, value };
+    } catch (error) {
+        return { ok: false, error: { code: "SETTINGS_FAILED", message: toMessage(error) } };
+    }
+}
+
+/** Opens the native directory picker. Resolves to `null` when the user cancels. */
+export async function pickDirectory(defaultPath?: string): Promise<Result<string | null>> {
+    if (!hasPreloadBridge()) {
+        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
+    }
+
+    try {
+        const value = await window.api.invoke("dialog:pick-directory", defaultPath);
+        return { ok: true, value };
+    } catch (error) {
+        return { ok: false, error: { code: "PICK_FAILED", message: "Orbit could not open the folder picker.", detail: toMessage(error) } };
+    }
+}
+
+/** Lists every known editor/terminal with a fresh availability check. */
+export async function loadLaunchApps(): Promise<Result<LaunchAppCatalog>> {
+    if (!hasPreloadBridge()) {
+        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
+    }
+
+    try {
+        const value = await window.api.invoke("launcher:list");
+        return { ok: true, value };
+    } catch (error) {
+        return { ok: false, error: { code: "LAUNCHER_FAILED", message: "Orbit could not detect installed applications.", detail: toMessage(error) } };
+    }
+}
+
+/** Reads the persisted editor and terminal preferences. */
+export async function loadLaunchPreferences(): Promise<Result<LaunchPreferences>> {
+    if (!hasPreloadBridge()) {
+        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
+    }
+
+    try {
+        const value = await window.api.invoke("settings:get-launch-preferences");
+        return { ok: true, value };
+    } catch (error) {
+        return { ok: false, error: { code: "LAUNCHER_FAILED", message: "Orbit could not read your application preferences.", detail: toMessage(error) } };
+    }
+}
+
+/** Persists one launcher preference. The main process validates it first. */
+export async function saveLaunchPreference(kind: LaunchKind, preference: LaunchPreference): Promise<Result<LaunchPreferences>> {
+    if (!hasPreloadBridge()) {
+        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
+    }
+
+    try {
+        const value = await window.api.invoke("settings:set-launch-preference", kind, preference);
+        return { ok: true, value };
+    } catch (error) {
+        return { ok: false, error: { code: "LAUNCHER_FAILED", message: toMessage(error) } };
+    }
+}
+
+/** Reads the app name and installed version for the About section. */
+export async function loadAppInfo(): Promise<Result<AppInfo>> {
+    if (!hasPreloadBridge()) {
+        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
+    }
+
+    try {
+        const value = await window.api.invoke("app:get-info");
+        return { ok: true, value };
+    } catch (error) {
+        return { ok: false, error: { code: "APP_INFO_FAILED", message: "Orbit could not read its version.", detail: toMessage(error) } };
+    }
+}
+
+/** Opens an allowlisted https link (docs, repository) in the default browser. */
+export async function openExternal(url: string): Promise<Result<void>> {
+    if (!hasPreloadBridge()) {
+        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
+    }
+
+    try {
+        await window.api.invoke("system:open-external", url);
+        return { ok: true, value: undefined };
+    } catch (error) {
+        return { ok: false, error: { code: "EXTERNAL_FAILED", message: "Orbit could not open that link.", detail: toMessage(error) } };
+    }
+}
+
 function openFailureMessage(target: ProjectOpenTarget): string {
     switch (target) {
         case "editor":
@@ -67,20 +178,6 @@ function openFailureMessage(target: ProjectOpenTarget): string {
             return "Orbit could not reveal this project in the file manager.";
         default:
             return "Orbit could not open this project.";
-    }
-}
-
-export async function probeBridge(): Promise<Result<BridgeProbe>> {
-    if (!hasPreloadBridge()) {
-        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
-    }
-
-    const started = performance.now();
-    try {
-        await window.api.invoke("ipc:check");
-        return { ok: true, value: { channel: "ipc:check", latencyMs: Math.round(performance.now() - started) } };
-    } catch (error) {
-        return { ok: false, error: { code: "SCAN_FAILED", message: "The bridge rejected a health check.", detail: toMessage(error) } };
     }
 }
 

@@ -1,4 +1,5 @@
 import { ScanErrorBanner, ScannerOfflineState } from "@/components/common/scanner-offline-state";
+import { ChangeFolderButton } from "@/components/common/change-folder-button";
 import { StatStrip, type StatItem } from "@/components/overview/stat-strip";
 import { ProjectDetails } from "@/components/projects/project-detail";
 import { ProjectGrid } from "@/components/projects/project-grid";
@@ -59,11 +60,19 @@ export function OverviewPage({ onNavigate }: { onNavigate: (view: ViewId) => voi
                 <EmptyState
                     icon={FolderSearch}
                     title="No projects yet"
-                    description="Orbit scans your projects directory for package.json files. Once projects are found they will appear here with their detected technologies."
+                    description={
+                        <>
+                            Orbit scanned <span className="font-mono text-foreground/80">{rootPath ? shortenPath(rootPath, 46) : "your projects directory"}</span> and found nothing. If your projects
+                            live somewhere else, pick a different folder.
+                        </>
+                    }
                     action={
-                        <Button variant="primary" onClick={reload}>
-                            Re-scan workspace
-                        </Button>
+                        <>
+                            <ChangeFolderButton />
+                            <Button variant="secondary" onClick={reload}>
+                                Re-scan workspace
+                            </Button>
+                        </>
                     }
                 />
             ) : null}

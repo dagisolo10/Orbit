@@ -9,7 +9,8 @@ export function Header({ view, searchRef }: { view: ViewId; searchRef: RefObject
     const { query, setQuery, reScan, reScanning } = useOrbit();
     const isMac = typeof window !== "undefined" && window.electron?.process.platform === "darwin";
     const meta = VIEW_META[view];
-    const showSearch = view !== "settings";
+    // Search only filters the list views; Overview (a dashboard) and Settings ignore it.
+    const showSearch = view === "projects" || view === "workspaces" || view === "technologies" || view === "favorites";
 
     return (
         <header className="sticky top-0 z-30 flex h-18 shrink-0 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur-xl">
