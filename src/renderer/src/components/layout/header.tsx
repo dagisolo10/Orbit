@@ -12,7 +12,7 @@ export function Header({ view, searchRef }: { view: ViewId; searchRef: RefObject
     const showSearch = view !== "settings";
 
     return (
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur-xl">
+        <header className="sticky top-0 z-30 flex h-18 shrink-0 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur-xl">
             <div className="min-w-0 flex-1">
                 <h1 className="truncate text-[15px] font-semibold tracking-tight text-foreground">{meta.title}</h1>
                 <p className="truncate text-xs text-muted-foreground">{meta.subtitle}</p>
@@ -54,7 +54,7 @@ export function Header({ view, searchRef }: { view: ViewId; searchRef: RefObject
                 ) : null}
                 <IconButton
                     icon={RefreshCw}
-                    label={reScanning ? "Scanning…" : "Rescan workspace"}
+                    label={reScanning ? "Scanning…" : "Re-scan workspace"}
                     side="bottom"
                     onClick={reScan}
                     disabled={reScanning}

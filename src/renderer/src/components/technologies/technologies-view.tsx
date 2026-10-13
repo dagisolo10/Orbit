@@ -20,7 +20,7 @@ const CATEGORY_ICONS: Record<TechnologyCategory, LucideIcon> = {
 };
 
 export function TechnologiesView({ onSelectTech, onSelectCategory }: { onSelectTech: (technology: Technology) => void; onSelectCategory: (category: TechnologyCategory) => void }) {
-    const { status, error, reload, reScan: rescan, dismissError, technologies, projects, query } = useOrbit();
+    const { status, error, reload, reScan, dismissError, technologies, projects, query } = useOrbit();
     const maxCount = technologies[0]?.count ?? 1;
 
     const filtered = useMemo(() => {
@@ -53,7 +53,7 @@ export function TechnologiesView({ onSelectTech, onSelectCategory }: { onSelectT
 
     return (
         <div className="space-y-6">
-            {error ? <ScanErrorBanner error={error} onRetry={rescan} onDismiss={dismissError} /> : null}
+            {error ? <ScanErrorBanner error={error} onRetry={reScan} onDismiss={dismissError} /> : null}
 
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                 <p className="text-[13px] text-muted-foreground">

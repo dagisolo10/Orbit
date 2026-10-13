@@ -2,7 +2,7 @@ import { OrbitContext, type LoadStatus, type OrbitContextValue, type TechnologyS
 import { useToast } from "@/contexts/toast-context";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { loadProjects, reScanProjects, type OrbitError } from "@/services/orbit";
-import type { OrbitSnapshot, Project, SortKey, Technology, TechnologyCategory, ViewMode } from "@/types/project";
+import type { OrbitSnapshot, Project, SortKey, Technology, TechnologyCategory, ViewMode, Workspace } from "@/types/project";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 export function OrbitProvider({ children }: { children: ReactNode }) {
@@ -91,10 +91,18 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     const isFavorite = useCallback((path: string) => favorites.includes(path), [favorites]);
 
     const projects = useMemo<Project[]>(() => snapshot?.projects ?? [], [snapshot]);
+    const workspaces = useMemo<Workspace[]>(() => snapshot?.workspaces ?? [], [snapshot]);
+
+    // Technologies, favorites, and search operate across the whole workspace,
+    // not just the standalone projects shown in All Projects.
+    const allProjects = useMemo<Project[]>(() => {
+        const members = workspaces.flatMap((workspace) => workspace.projects);
+        return members.length > 0 ? [...projects, ...members] : projects;
+    }, [projects, workspaces]);
 
     const technologies = useMemo<TechnologyStat[]>(() => {
         const counts = new Map<string, TechnologyStat>();
-        for (const project of projects) {
+        for (const project of allProjects) {
             for (const tech of project.technologies) {
                 const existing = counts.get(tech.name);
                 if (existing) {
@@ -105,7 +113,7 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
             }
         }
         return Array.from(counts.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-    }, [projects]);
+    }, [allProjects]);
 
     const clearFilters = useCallback(() => {
         setQuery("");
@@ -126,6 +134,8 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
             setQuery,
             snapshot,
             projects,
+            allProjects,
+            workspaces,
             viewMode,
             favorites,
             activeTech,
@@ -151,6 +161,8 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
             sortKey,
             snapshot,
             projects,
+            allProjects,
+            workspaces,
             viewMode,
             favorites,
             isFavorite,

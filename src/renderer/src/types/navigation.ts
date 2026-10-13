@@ -1,4 +1,4 @@
-export type ViewId = "overview" | "projects" | "technologies" | "favorites" | "settings";
+export type ViewId = "overview" | "projects" | "workspaces" | "technologies" | "favorites" | "settings";
 
 export const VIEW_META: Record<ViewId, { label: string; title: string; subtitle: string }> = {
     overview: {
@@ -9,7 +9,12 @@ export const VIEW_META: Record<ViewId, { label: string; title: string; subtitle:
     projects: {
         label: "All Projects",
         title: "All Projects",
-        subtitle: "Every project Orbit discovered in your workspace",
+        subtitle: "Standalone projects Orbit discovered in your workspace",
+    },
+    workspaces: {
+        label: "Workspaces",
+        title: "Workspaces",
+        subtitle: "Monorepos and multi-package workspaces in your projects",
     },
     technologies: {
         label: "Technologies",

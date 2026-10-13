@@ -23,10 +23,12 @@ export function sortProjects(projects: Project[], sortKey: SortKey): Project[] {
 }
 
 export function useVisibleProjects(scope: ProjectScope): Project[] {
-    const { projects, favorites, query, activeTech, activeCategory, sortKey } = useOrbit();
+    const { projects, allProjects, favorites, query, activeTech, activeCategory, sortKey } = useOrbit();
 
     return useMemo(() => {
-        let list = projects;
+        // "all" reflects the standalone projects view; favorites can point at any
+        // discovered project, including members of a workspace.
+        let list = scope === "favorites" ? allProjects : projects;
 
         if (scope === "favorites") {
             list = list.filter((project) => favorites.includes(project.path));
@@ -48,5 +50,5 @@ export function useVisibleProjects(scope: ProjectScope): Project[] {
         }
 
         return sortProjects(list, sortKey);
-    }, [projects, favorites, query, activeTech, activeCategory, sortKey, scope]);
+    }, [projects, allProjects, favorites, query, activeTech, activeCategory, sortKey, scope]);
 }

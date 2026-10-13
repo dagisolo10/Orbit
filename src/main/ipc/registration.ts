@@ -26,8 +26,8 @@ export function registerIpcHandlers() {
         const rootPath = getProjectsRoot();
 
         try {
-            const projects = await scanProjects(rootPath);
-            return { projects, rootPath, scannedAt: Date.now() };
+            const { projects, workspaces } = await scanProjects(rootPath);
+            return { projects, workspaces, rootPath, scannedAt: Date.now() };
         } catch (error) {
             if (error instanceof ProjectScanError) {
                 throw new Error(error.message);

@@ -34,7 +34,7 @@ async function runScan(): Promise<Result<OrbitSnapshot>> {
 
     try {
         const result = await window.api.invoke("projects:scan");
-        return { ok: true, value: { projects: result.projects, rootPath: result.rootPath, scannedAt: result.scannedAt } };
+        return { ok: true, value: { projects: result.projects, workspaces: result.workspaces, rootPath: result.rootPath, scannedAt: result.scannedAt } };
     } catch (error) {
         return { ok: false, error: { code: "SCAN_FAILED", message: "Orbit could not scan your projects.", detail: toMessage(error) } };
     }

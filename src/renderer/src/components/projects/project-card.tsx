@@ -19,7 +19,7 @@ export function ProjectCard({ project, onOpenDetails, onSelectTech }: { project:
     return (
         <div
             onClick={() => onOpenDetails(project)}
-            className="group relative flex cursor-pointer flex-col rounded-xl border border-white/8 bg-card p-3.5 transition-all duration-200 hover:border-white/14 hover:bg-white/[0.035] hover:shadow-[0_18px_45px_-28px_rgba(0,0,0,0.95)] focus-within:border-primary/30"
+            className="group relative flex cursor-pointer flex-col rounded-xl border border-white/8 bg-card min-h-35 p-3.5 transition-all duration-200 hover:border-white/14 hover:bg-white/[0.035] hover:shadow-[0_18px_45px_-28px_rgba(0,0,0,0.95)] focus-within:border-primary/30"
         >
             <div className="flex items-start gap-3">
                 <Monogram name={name} />
@@ -50,7 +50,7 @@ export function ProjectCard({ project, onOpenDetails, onSelectTech }: { project:
                 </div>
             </div>
 
-            <div className="mt-3.5 flex flex-wrap items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
+            <div className="mt-auto flex flex-wrap items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
                 {shown.length > 0 ? (
                     shown.map((tech) => <TechBadge key={tech.name} technology={tech} onClick={() => onSelectTech(tech)} />)
                 ) : (

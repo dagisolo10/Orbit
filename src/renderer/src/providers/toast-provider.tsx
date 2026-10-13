@@ -11,8 +11,8 @@ const TONE_ICON: Record<ToastTone, LucideIcon> = {
 
 const TONE_COLOR: Record<ToastTone, string> = {
     info: "text-primary",
-    success: "text-emerald-400",
     error: "text-red-400",
+    success: "text-emerald-400",
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {

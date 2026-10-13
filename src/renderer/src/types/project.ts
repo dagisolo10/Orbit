@@ -1,9 +1,10 @@
-export type { Project, ProjectOpenTarget, Technology, TechnologyCategory } from "@shared/types/project";
+export type { Project, ProjectOpenTarget, Technology, TechnologyCategory, Workspace } from "@shared/types/project";
 
-import type { Project } from "@shared/types/project";
+import type { Project, Workspace } from "@shared/types/project";
 
 export type OrbitSnapshot = {
     projects: Project[];
+    workspaces: Workspace[];
     rootPath: string | null;
     scannedAt: number | null;
 };

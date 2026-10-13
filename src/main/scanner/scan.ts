@@ -3,8 +3,15 @@ import { Project, Technology } from "@shared/types/project";
 import { readdir, readFile } from "fs/promises";
 import path from "path";
 
+type Workspace = {
+    name: string;
+    path: string;
+    projects: Project[];
+};
+
 let count = 0;
-const projects: Project[] = [];
+export const projects: Project[] = [];
+export const workspaceMap = new Map<string, Workspace>();
 
 export async function scanDir(fullPath: string) {
     try {
@@ -14,7 +21,13 @@ export async function scanDir(fullPath: string) {
 
         const entries = await readdir(dirPath, { withFileTypes: true });
 
-        for (const entry of entries) {
+        const packageJsonEntry = entries.find((entry) => entry.name === "package.json" && entry.isFile());
+
+        if (packageJsonEntry) {
+            await checkAndCreateWorkspace(path.join(dirPath, packageJsonEntry.name));
+        }
+
+        outer: for (const entry of entries) {
             const fullPath = path.join(dirPath, entry.name);
 
             if (skipped.has(entry.name)) {
@@ -25,19 +38,16 @@ export async function scanDir(fullPath: string) {
                 const content = await readFile(fullPath, "utf-8");
                 const packageJson = JSON.parse(content);
 
-                const technologies: Technology[] = [];
-
                 const dependencies = {
                     ...packageJson.dependencies,
                     ...packageJson.devDependencies,
                 };
 
+                const technologies: Technology[] = [];
+
                 for (const [name, { category, packages }] of Object.entries(techStack)) {
                     if (packages.some((pkg) => pkg in dependencies)) {
-                        technologies.push({
-                            name,
-                            category,
-                        });
+                        technologies.push({ name, category });
                     }
                 }
 
@@ -47,9 +57,24 @@ export async function scanDir(fullPath: string) {
                     name: packageJson.name ?? path.basename(path.dirname(fullPath)),
                 };
 
-                projects.push(project);
+                const workspaces = [...workspaceMap.values()];
 
-                // console.log(project);
+                for (const workspace of workspaces) {
+                    const relativePath = path.relative(workspace.path, project.path);
+
+                    const isInsideWorkspace = relativePath !== "" && !relativePath.startsWith(`..${path.sep}`) && relativePath !== ".." && !path.isAbsolute(relativePath);
+
+                    if (project.path === workspace.path) {
+                        continue outer;
+                    }
+
+                    if (isInsideWorkspace) {
+                        workspace.projects.push(project);
+                        continue outer;
+                    }
+                }
+
+                projects.push(project);
             }
 
             if (entry.isDirectory()) {
@@ -59,4 +84,17 @@ export async function scanDir(fullPath: string) {
     } catch (error) {
         console.error("Failed to read dir", error);
     }
+}
+
+async function checkAndCreateWorkspace(packageJsonPath: string) {
+    const content = await readFile(packageJsonPath, "utf-8");
+    const packageJson = JSON.parse(content);
+
+    if (!packageJson.workspaces) return;
+
+    workspaceMap.set(packageJsonPath, {
+        projects: [],
+        path: path.dirname(packageJsonPath),
+        name: packageJson.name ?? path.basename(path.dirname(packageJsonPath)),
+    });
 }

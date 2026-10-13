@@ -4,37 +4,39 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { shortenPath } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { VIEW_META, type ViewId } from "@/types/navigation";
-import { FolderKanban, Layers, LayoutDashboard, Orbit, Settings, Star, type LucideIcon } from "lucide-react";
+import { Boxes, FolderKanban, Layers, LayoutDashboard, Orbit, Settings, Star, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 
 const NAV_ICON: Record<ViewId, LucideIcon> = {
     overview: LayoutDashboard,
     projects: FolderKanban,
+    workspaces: Boxes,
     technologies: Layers,
     favorites: Star,
     settings: Settings,
 };
 
-const PRIMARY_NAV: ViewId[] = ["overview", "projects", "technologies", "favorites"];
+const PRIMARY_NAV: ViewId[] = ["overview", "projects", "workspaces", "technologies", "favorites"];
 
 export function Sidebar({ view, onNavigate }: { view: ViewId; onNavigate: (view: ViewId) => void }) {
-    const { projects, technologies, favorites, snapshot } = useOrbit();
+    const { projects, allProjects, workspaces, technologies, favorites, snapshot } = useOrbit();
     const compact = !useMediaQuery("(min-width: 1024px)");
 
     const counts = useMemo<Partial<Record<ViewId, number>>>(
         () => ({
             projects: projects.length,
+            workspaces: workspaces.length,
             technologies: technologies.length,
-            favorites: favorites.length,
+            favorites: allProjects.filter((project) => favorites.includes(project.path)).length,
         }),
-        [projects.length, technologies.length, favorites.length],
+        [projects.length, allProjects, workspaces.length, technologies.length, favorites],
     );
 
     return (
         <aside className={cn("flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar", compact ? "w-17" : "w-62")}>
             <Brand compact={compact} />
 
-            <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5 py-3">
+            <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5 py-4">
                 {PRIMARY_NAV.map((id) => (
                     <NavItem key={id} id={id} active={view === id} compact={compact} count={counts[id]} onNavigate={onNavigate} />
                 ))}
@@ -50,7 +52,7 @@ export function Sidebar({ view, onNavigate }: { view: ViewId; onNavigate: (view:
 
 function Brand({ compact }: { compact: boolean }) {
     return (
-        <div className={cn("flex h-14 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-3.5", compact && "justify-center px-0")}>
+        <div className={cn("flex shrink-0 items-center gap-2.5 border-b border-sidebar-border h-18 px-4", compact && "justify-center px-0")}>
             <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-violet-500 to-indigo-600 text-white shadow-[0_10px_24px_-10px_rgba(124,92,240,0.95)]">
                 <Orbit className="size-4.5" strokeWidth={2} />
             </span>

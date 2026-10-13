@@ -1,6 +1,6 @@
 import { useToast } from "@/contexts/toast-context";
 import { openProject } from "@/services/orbit";
-import type { Project, ProjectOpenTarget } from "@/types/project";
+import type { Project, ProjectOpenTarget, Workspace } from "@/types/project";
 import { useCallback } from "react";
 
 const TARGET_LABEL: Record<ProjectOpenTarget, string> = {
@@ -12,12 +12,12 @@ const TARGET_LABEL: Record<ProjectOpenTarget, string> = {
 export function useProjectActions() {
     const { toast } = useToast();
 
-    const open = useCallback(
-        async (project: Project, target: ProjectOpenTarget) => {
-            const result = await openProject(project.path, target);
+    const openPath = useCallback(
+        async (path: string, target: ProjectOpenTarget, label?: string) => {
+            const result = await openProject(path, target);
 
             if (result.ok) {
-                toast({ title: target === "file-manager" ? "Revealed in file manager" : `Opening in ${TARGET_LABEL[target]}…`, description: project.name, tone: "success" });
+                toast({ title: target === "file-manager" ? "Revealed in file manager" : `Opening in ${TARGET_LABEL[target]}…`, description: label, tone: "success" });
                 return;
             }
 
@@ -26,5 +26,9 @@ export function useProjectActions() {
         [toast],
     );
 
-    return { open };
+    const open = useCallback((project: Project, target: ProjectOpenTarget) => openPath(project.path, target, project.name), [openPath]);
+
+    const openWorkspace = useCallback((workspace: Workspace, target: ProjectOpenTarget) => openPath(workspace.path, target, workspace.name), [openPath]);
+
+    return { open, openPath, openWorkspace };
 }

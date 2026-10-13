@@ -4,13 +4,14 @@ import { OverviewPage } from "@/components/overview/overview-page";
 import { ProjectExplorer } from "@/components/projects/project-explorer";
 import { SettingsView } from "@/components/settings/settings-view";
 import { TechnologiesView } from "@/components/technologies/technologies-view";
+import { WorkspacesView } from "@/components/workspaces/workspaces-view";
 import { useOrbit } from "@/contexts/orbit-context";
 import { useSearchHotkey } from "@/hooks/use-hot-keys";
 import type { ViewId } from "@/types/navigation";
 import type { Technology, TechnologyCategory } from "@/types/project";
 import { useCallback, useRef, useState } from "react";
 
-export function AppShell() {
+export function App() {
     const { setActiveTech, setActiveCategory } = useOrbit();
     const [view, setView] = useState<ViewId>("overview");
     const searchRef = useRef<HTMLInputElement>(null);
@@ -46,9 +47,10 @@ export function AppShell() {
                 <Header view={view} searchRef={searchRef} />
 
                 <main className="min-h-0 flex-1 overflow-y-auto">
-                    <div className="mx-auto w-full max-w-360 px-6 py-6">
+                    <div className="mx-auto w-full max-w-360 p-6">
                         {view === "overview" ? <OverviewPage onNavigate={setView} /> : null}
                         {view === "projects" ? <ProjectExplorer scope="all" /> : null}
+                        {view === "workspaces" ? <WorkspacesView /> : null}
                         {view === "favorites" ? <ProjectExplorer scope="favorites" /> : null}
                         {view === "technologies" ? <TechnologiesView onSelectTech={handleSelectTech} onSelectCategory={handleSelectCategory} /> : null}
                         {view === "settings" ? <SettingsView /> : null}

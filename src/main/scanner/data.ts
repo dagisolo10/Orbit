@@ -1,7 +1,7 @@
 import { TechnologyDefinition } from "@shared/types/project";
 
 export const projectMarkers = new Set(["package.json"]);
-export const skipped = new Set(["node_modules", ".next", ".expo", "dist", "out", "Git Clones"]);
+export const skipped = new Set(["node_modules", ".next", ".vscode", ".cursor", ".git", ".expo", "dist", "out", ".turbo", ".fallow", "Git Clones"]);
 
 export const techStack: Record<string, TechnologyDefinition> = {
     // Languages

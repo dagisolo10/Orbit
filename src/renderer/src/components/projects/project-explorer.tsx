@@ -15,7 +15,7 @@ import { pluralize } from "@/lib/format";
 import { getCategoryMeta } from "@/lib/tech";
 import { cn } from "@/lib/utils";
 import type { Project, ProjectScope, SortKey, ViewMode } from "@/types/project";
-import { ArrowUpDown, FolderSearch, LayoutGrid, List, RefreshCw, SearchX, Star, X } from "lucide-react";
+import { ArrowUpDown, Boxes, FolderSearch, LayoutGrid, List, RefreshCw, SearchX, Star, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 const SORT_LABELS: Record<SortKey, string> = {
@@ -33,10 +33,11 @@ export function ProjectExplorer({ scope }: { scope: ProjectScope }) {
         status,
         error,
         reload,
-        reScan: rescan,
-        reScanning: rescanning,
+        reScan,
+        reScanning,
         dismissError,
         projects,
+        allProjects,
         favorites,
         viewMode,
         setViewMode,
@@ -50,6 +51,7 @@ export function ProjectExplorer({ scope }: { scope: ProjectScope }) {
         setQuery,
         clearFilters,
         hasActiveFilters,
+        workspaces,
     } = useOrbit();
     const visible = useVisibleProjects(scope);
     const [detailsProject, setDetailsProject] = useState<Project | null>(null);
@@ -64,19 +66,25 @@ export function ProjectExplorer({ scope }: { scope: ProjectScope }) {
     const pageStart = (currentPage - 1) * PAGE_SIZE;
     const pageProjects = visible.slice(pageStart, pageStart + PAGE_SIZE);
 
+    const total = scope === "favorites" ? allProjects.filter((project) => favorites.includes(project.path)).length : projects.length;
+
     if (status === "loading") return <ExplorerSkeleton viewMode={viewMode} />;
     if (status === "error" && error) return <ScannerOfflineState error={error} onRetry={reload} />;
 
-    if (projects.length === 0) {
+    if (scope === "all" && projects.length === 0) {
+        if (workspaces.length > 0) {
+            return <EmptyState icon={Boxes} title="No standalone projects" description="Every project Orbit found lives inside a workspace. Open the Workspaces view to browse them." />;
+        }
+
         return (
             <EmptyState
                 icon={FolderSearch}
                 title="No projects found yet"
-                description="Orbit scans your projects directory for package.json files. Add a project, then run a rescan to populate your workspace."
+                description="Orbit scans your projects directory for package.json files. Add a project, then run a re-scan to populate your workspace."
                 action={
-                    <Button variant="primary" onClick={rescan} disabled={rescanning}>
-                        <RefreshCw className={cn("size-3.5", rescanning && "animate-spin")} />
-                        {rescanning ? "Scanning…" : "Rescan workspace"}
+                    <Button variant="primary" onClick={reScan} disabled={reScanning}>
+                        <RefreshCw className={cn("size-3.5", reScanning && "animate-spin")} />
+                        {reScanning ? "Scanning…" : "Re-scan workspace"}
                     </Button>
                 }
             />
@@ -96,16 +104,16 @@ export function ProjectExplorer({ scope }: { scope: ProjectScope }) {
 
     return (
         <div className="space-y-4">
-            {error ? <ScanErrorBanner error={error} onRetry={rescan} onDismiss={dismissError} /> : null}
+            {error ? <ScanErrorBanner error={error} onRetry={reScan} onDismiss={dismissError} /> : null}
 
             <div className="flex flex-wrap items-center gap-2.5">
                 <p className="text-[13px] text-muted-foreground">
                     {hasActiveFilters ? (
                         <>
-                            Showing <span className="font-medium text-foreground">{visible.length}</span> of {pluralize(projects.length, "project")}
+                            Showing <span className="font-medium text-foreground">{visible.length}</span> of {pluralize(total, "project")}
                         </>
                     ) : (
-                        pluralize(projects.length, "project")
+                        pluralize(total, "project")
                     )}
                 </p>
 

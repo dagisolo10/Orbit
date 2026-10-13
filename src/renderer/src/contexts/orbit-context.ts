@@ -1,5 +1,5 @@
 import type { OrbitError } from "@/services/orbit";
-import type { OrbitSnapshot, Project, SortKey, Technology, TechnologyCategory, ViewMode } from "@/types/project";
+import type { OrbitSnapshot, Project, SortKey, Technology, TechnologyCategory, ViewMode, Workspace } from "@/types/project";
 import { createContext, useContext } from "react";
 
 export type LoadStatus = "loading" | "ready" | "error";
@@ -10,7 +10,11 @@ export type OrbitContextValue = {
     status: LoadStatus;
     snapshot: OrbitSnapshot | null;
     error: OrbitError | null;
+    /** Standalone projects only. Workspace members live under `workspaces`. */
     projects: Project[];
+    /** Every discovered project, standalone and workspace members alike. */
+    allProjects: Project[];
+    workspaces: Workspace[];
     technologies: TechnologyStat[];
     reload: () => void;
     reScan: () => void;

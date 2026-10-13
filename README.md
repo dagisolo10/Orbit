@@ -20,13 +20,15 @@ Everything runs locally and updates whenever you hit rescan.
 ## Features
 
 - **Automatic project discovery** — Recursively scans your projects directory for `package.json` files, with safe handling for unreadable folders and malformed manifests.
+- **Workspace awareness** — Detects monorepo/workspace roots (a `package.json` with a `workspaces` field) and groups their member packages, while standalone projects stay in All Projects without duplication.
 - **Technology detection** — Reads `dependencies` and `devDependencies` to detect the stack each project uses, grouped into categories: Languages, Frontend, Backend, Styling, Database / ORM, and Tools.
 - **Brand logos** — Every technology is shown with its real logo via [Devicon](https://devicon.dev/) (primary) and [Simple Icons](https://simpleicons.org/) (fallback), bundled locally so icons work fully offline.
-- **Overview dashboard** — Project count, distinct technologies, the active directory, and the last scan time at a glance, plus featured projects and top technologies.
-- **Project explorer** — Grid or list view with instant search, sorting (name, path, technology count), technology and category filters, and pagination.
+- **Overview dashboard** — Project count, workspace count, distinct technologies, the active directory, and the last scan time at a glance, plus featured projects, top technologies, and workspace cards.
+- **Project explorer** — Grid or list view with instant search, sorting (name, path, technology count), technology and category filters, and pagination. Shows standalone projects only.
+- **Workspaces view** — Expandable workspace groups with expand/collapse-all, sorting by workspace name or path, technology/category filters, and grid or list layouts. Members keep the full project card and its actions.
 - **Technologies explorer** — Browse your stack and jump straight to every project that uses a given technology.
-- **Favorites** — Star the projects you use most for quick access.
-- **Quick actions** — Open any project in an external editor, open a terminal at its path, reveal it in your file manager, or copy its path.
+- **Favorites** — Star the projects you use most for quick access, including projects that live inside a workspace.
+- **Quick actions** — Open any project — or an entire workspace root — in an external editor, open a terminal at its path, reveal it in your file manager, or copy its path.
 - **Rescan on demand** — Refresh the workspace whenever you add or change projects.
 - **Settings & diagnostics** — See your workspace directory, rescan, and health-check the renderer-to-main-process bridge.
 - **Polished dark UI** — A responsive React + Tailwind interface with skeletons, empty states, and clear error banners.
@@ -92,10 +94,10 @@ scanner ──► ipcMain.handle  ──►  contextBridge  ──►  window.ap
                                               OrbitProvider ──► views
 ```
 
-1. **Scan (main process)** — `src/main/scanner` walks your projects directory, parses each `package.json`, matches dependencies against a known technology list, and returns a typed, de-duplicated list of projects. Filesystem access never leaves the main process.
+1. **Scan (main process)** — `src/main/scanner` walks your projects directory, parses each `package.json`, matches dependencies against a known technology list, and detects workspace roots. Member packages are grouped under their closest workspace; everything else is returned as a standalone project. Filesystem access never leaves the main process.
 2. **Bridge (preload)** — A single, narrow `window.api.invoke(channel, ...args)` method is exposed through `contextBridge` with `contextIsolation` enabled. There is no `nodeIntegration` in the renderer.
-3. **State (renderer)** — `OrbitProvider` loads the snapshot once on mount, derives technology statistics, and drives every view. Rescans keep the last good results on screen if something goes wrong.
-4. **Views** — Overview, All Projects, Technologies, Favorites, and Settings render from that single source of truth.
+3. **State (renderer)** — `OrbitProvider` loads the snapshot once on mount, derives technology statistics and the combined project list (standalone + workspace members), and drives every view. Rescans keep the last good results on screen if something goes wrong.
+4. **Views** — Overview, All Projects, Workspaces, Technologies, Favorites, and Settings render from that single source of truth.
 
 ### Where Orbit looks
 
@@ -114,14 +116,14 @@ Orbit scans **`<your home directory>/Projects`** by default. The sidebar shows t
 
 Detection is driven entirely by dependencies in `package.json`; Orbit never invents technologies it cannot find.
 
-## Opening projects
+## Opening projects and workspaces
 
-From any project card, list row, or the details modal you can:
+From any project card, list row, or the details modal you can open a single project. Each workspace group in the Workspaces view offers the same actions against the workspace root:
 
 - **Open in editor** — tries `$VISUAL`/`$EDITOR`, then VS Code, VSCodium, Cursor, Windsurf, Sublime Text (and the macOS app equivalents).
 - **Open in terminal** — tries your system's default terminal (`xdg-terminal-exec`, GNOME Terminal, Konsole, Alacritty, Kitty, WezTerm, and more).
-- **Reveal in file manager** — opens the project folder in your OS file manager.
-- **Copy path** — copies the absolute project path to the clipboard.
+- **Reveal in file manager** — opens the project or workspace folder in your OS file manager.
+- **Copy path** — copies the absolute path to the clipboard.
 
 External apps are probed in order and the first one found wins, so Orbit adapts to whatever you have installed.
 
@@ -144,7 +146,7 @@ src/
 ├─ preload/            # contextBridge — exposes the narrow window.api
 ├─ renderer/           # React application
 │  └─ src/
-│     ├─ app/          # Entry point, shell, and global styles
+│     ├─ app/          # Entry point and global styles
 │     ├─ components/   # Views and UI primitives
 │     ├─ contexts/     # Context definitions
 │     ├─ providers/    # State providers (Orbit data, toasts)
