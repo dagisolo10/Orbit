@@ -1,5 +1,6 @@
-appId: com.electron.app
-productName: orbit
+appId: com.dagidev.orbit
+productName: Orbit
+copyright: Copyright © 2026 Dagmawi Solomon
 directories:
     buildResources: build
 files:
@@ -12,13 +13,14 @@ files:
 asarUnpack:
     - resources/**
 win:
-    executableName: orbit
+    executableName: Orbit
 nsis:
     artifactName: ${name}-${version}-setup.${ext}
     shortcutName: ${productName}
     uninstallDisplayName: ${productName}
     createDesktopShortcut: always
 mac:
+    category: public.app-category.developer-tools
     entitlementsInherit: build/entitlements.mac.plist
     extendInfo:
         - NSCameraUsageDescription: Application requests access to the device's camera.
@@ -33,11 +35,31 @@ linux:
         - AppImage
         - snap
         - deb
-    maintainer: electronjs.org
-    category: Utility
+    maintainer: Dagmawi Solomon <dagisolo1023@gmail.com>
+    category: Development
+    syncDesktopName: true
+    synopsis: Local project workspace for developers
+    description: Orbit scans a directory on your machine, detects the technologies each project uses, and presents everything in a fast, searchable, offline dashboard.
 appImage:
     artifactName: ${name}-${version}.${ext}
+pacman:
+    packageName: orbit
+    artifactName: ${name}-${version}.${ext}
+    depends:
+        - c-ares
+        - ffmpeg
+        - gtk3
+        - libevent
+        - libvpx
+        - libxslt
+        - libxss
+        - minizip
+        - nss
+        - re2
+        - snappy
+        - libnotify
+        - libayatana-appindicator
 npmRebuild: false
 publish:
     provider: generic
-    url: https://example.com/auto-updates
+    url: https://dagidev.com/orbit/updates

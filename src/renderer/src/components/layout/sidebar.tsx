@@ -4,7 +4,8 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { shortenPath } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { VIEW_META, type ViewId } from "@/types/navigation";
-import { Boxes, FolderKanban, Layers, LayoutDashboard, Orbit, Settings, Star, type LucideIcon } from "lucide-react";
+import logo from "@/assets/logo.png";
+import { Boxes, FolderKanban, Layers, LayoutDashboard, Settings, Star, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 
 const NAV_ICON: Record<ViewId, LucideIcon> = {
@@ -53,8 +54,8 @@ export function Sidebar({ view, onNavigate }: { view: ViewId; onNavigate: (view:
 function Brand({ compact }: { compact: boolean }) {
     return (
         <div className={cn("flex shrink-0 items-center gap-2.5 border-b border-sidebar-border h-18 px-4", compact && "justify-center px-0")}>
-            <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-violet-500 to-indigo-600 text-white shadow-[0_10px_24px_-10px_rgba(124,92,240,0.95)]">
-                <Orbit className="size-4.5" strokeWidth={2} />
+            <span className="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg shadow-[0_10px_24px_-10px_rgba(124,92,240,0.95)]">
+                <img src={logo} alt="Orbit" className="size-full object-cover" draggable={false} />
             </span>
             {!compact ? (
                 <div className="min-w-0">

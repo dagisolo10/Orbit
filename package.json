@@ -1,10 +1,36 @@
 {
-    "name": "orbit",
+    "name": "Orbit",
     "version": "1.0.0",
-    "description": "An Electron application with React and TypeScript",
+    "description": "A local project workspace for developers — scan, organize, and open your projects with automatic technology detection.",
+    "desktopName": "Orbit",
     "main": "./out/main/index.js",
-    "author": "example.com",
-    "homepage": "https://electron-vite.org",
+    "author": {
+        "name": "Dagmawi Solomon",
+        "email": "dagisolo1023@gmail.com",
+        "url": "https://dagidev.com"
+    },
+    "homepage": "https://dagidev.com",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/dagisolo10/Orbit.git"
+    },
+    "bugs": {
+        "url": "https://github.com/dagisolo10/Orbit/issues"
+    },
+    "license": "MIT",
+    "keywords": [
+        "react",
+        "monorepo",
+        "electron",
+        "workspace",
+        "typescript",
+        "desktop-app",
+        "developer-tools",
+        "project-manager"
+    ],
+    "engines": {
+        "node": ">=20"
+    },
     "scripts": {
         "format": "prettier --write .",
         "lint": "eslint --fix .",
@@ -18,7 +44,8 @@
         "build:unpack": "npm run build && electron-builder --dir",
         "build:win": "npm run build && electron-builder --win",
         "build:mac": "electron-vite build && electron-builder --mac",
-        "build:linux": "electron-vite build && electron-builder --linux"
+        "build:linux": "electron-vite build && electron-builder --linux",
+        "build:arch": "electron-vite build && electron-builder --linux pacman"
     },
     "dependencies": {
         "@electron-toolkit/preload": "^3.0.2",
