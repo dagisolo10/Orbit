@@ -1,0 +1,24 @@
+{
+    "files": [],
+    "references": [{ "path": "./tsconfig.node.json" }, { "path": "./tsconfig.web.json" }],
+    "compilerOptions": {
+        "paths": {
+            "@main/*": ["./src/main/*"],
+            "@/*": ["./src/renderer/src/*"],
+            "@shared/*": ["./src/shared/*"],
+            "@preload/*": ["./src/preload/*"]
+        },
+
+        "strict": true,
+        "noImplicitAny": true,
+        "noUnusedLocals": true,
+        "noErrorTruncation": true,
+        "noUnusedParameters": true,
+        "noImplicitOverride": true,
+        "allowUnreachableCode": false,
+        "noFallthroughCasesInSwitch": true,
+        "noUncheckedSideEffectImports": true,
+        "forceConsistentCasingInFileNames": true,
+        "noPropertyAccessFromIndexSignature": true
+    }
+}
