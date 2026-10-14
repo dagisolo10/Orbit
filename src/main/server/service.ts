@@ -1,5 +1,5 @@
 import { ServerManager } from "@server/manager";
-import { addServerProject, readServerProjects, removeServerProject, ServerConfigError, updateServerProject } from "@server/store";
+import { addServerProject, readServerProjects, removeServerProject, reorderServerProjects, ServerConfigError, updateServerProject } from "@server/store";
 import type { ServerEvent, ServerProject, ServerProjectDraft, ServerProjectsResult, ServerRuntimeState, ServerSnapshot } from "@shared/types/server";
 import { SERVER_EVENT_CHANNEL } from "@shared/types/server";
 import { BrowserWindow } from "electron";
@@ -50,6 +50,11 @@ class ServerService {
     async remove(id: string): Promise<ServerProjectsResult> {
         await removeServerProject(id);
         await this.manager.forget(id);
+        return this.result();
+    }
+
+    async reorder(ids: string[]): Promise<ServerProjectsResult> {
+        await reorderServerProjects(ids);
         return this.result();
     }
 

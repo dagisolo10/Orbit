@@ -23,6 +23,7 @@ export type ServersContextValue = {
     addProject: (draft: ServerProjectDraft) => Promise<ServerMutationResult>;
     updateProject: (id: string, draft: ServerProjectDraft) => Promise<ServerMutationResult>;
     removeProject: (id: string) => Promise<boolean>;
+    reorder: (ids: string[]) => Promise<void>;
     start: (id: string) => Promise<void>;
     stop: (id: string) => Promise<void>;
     restart: (id: string) => Promise<void>;

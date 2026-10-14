@@ -67,6 +67,17 @@ export async function removeServer(id: string): Promise<Result<ServerProjectsRes
     }
 }
 
+export async function reorderServers(ids: string[]): Promise<Result<ServerProjectsResult>> {
+    if (!hasPreloadBridge()) return missingBridge();
+
+    try {
+        const value = await window.api.invoke("servers:reorder", ids);
+        return { ok: true, value };
+    } catch (error) {
+        return { ok: false, error: serverError("Orbit could not reorder your projects.", toMessage(error)) };
+    }
+}
+
 export async function startServer(id: string): Promise<Result<ServerRuntimeState>> {
     return runServerAction("servers:start", id, "Orbit could not start that server.");
 }

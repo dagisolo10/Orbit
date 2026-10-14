@@ -22,11 +22,29 @@ function stoppedState(id: string): ServerRuntimeState {
 }
 
 export function ServersView() {
-    const { status, error, projects, states, logs, activeId, activeProject, busyIds, setActiveId, reload, addProject, updateProject, removeProject, start, stop, restart, clearLogs } = useServers();
+    const { status, error, projects, states, logs, activeId, activeProject, busyIds, setActiveId, reload, addProject, updateProject, removeProject, reorder, start, stop, restart, clearLogs } =
+        useServers();
 
     const [formOpen, setFormOpen] = useState(false);
     const [editing, setEditing] = useState<ServerProject | null>(null);
     const [confirmRemove, setConfirmRemove] = useState<ServerProject | null>(null);
+    const [dragId, setDragId] = useState<string | null>(null);
+    const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+    const dropOn = (targetId: string) => {
+        if (dragId && dragId !== targetId) {
+            const ids = projects.map((project) => project.id);
+            const from = ids.indexOf(dragId);
+            const to = ids.indexOf(targetId);
+            if (from !== -1 && to !== -1) {
+                ids.splice(from, 1);
+                ids.splice(to, 0, dragId);
+                void reorder(ids);
+            }
+        }
+        setDragId(null);
+        setDragOverId(null);
+    };
 
     const openAdd = () => {
         setEditing(null);
@@ -87,7 +105,18 @@ export function ServersView() {
                             project={project}
                             state={states[project.id] ?? stoppedState(project.id)}
                             active={project.id === activeId}
+                            dragging={project.id === dragId}
+                            dragOver={project.id === dragOverId}
                             onSelect={() => setActiveId(project.id)}
+                            onDragStart={() => setDragId(project.id)}
+                            onDragOver={() => {
+                                if (dragId && dragId !== project.id) setDragOverId(project.id);
+                            }}
+                            onDrop={() => dropOn(project.id)}
+                            onDragEnd={() => {
+                                setDragId(null);
+                                setDragOverId(null);
+                            }}
                         />
                     ))}
                 </div>
@@ -141,18 +170,58 @@ export function ServersView() {
     );
 }
 
-function ServerTab({ project, state, active, onSelect }: { project: ServerProject; state: ServerRuntimeState; active: boolean; onSelect: () => void }) {
+function ServerTab({
+    project,
+    state,
+    active,
+    dragging,
+    dragOver,
+    onSelect,
+    onDragStart,
+    onDragOver,
+    onDrop,
+    onDragEnd,
+}: {
+    project: ServerProject;
+    state: ServerRuntimeState;
+    active: boolean;
+    dragging: boolean;
+    dragOver: boolean;
+    onSelect: () => void;
+    onDragStart: () => void;
+    onDragOver: () => void;
+    onDrop: () => void;
+    onDragEnd: () => void;
+}) {
     const meta = SERVER_STATUS_META[state.status];
     const port = state.urls.length > 0 ? portFromUrl(state.urls[0]) : null;
 
     return (
         <button
             type="button"
+            draggable
             onClick={onSelect}
+            onDragStart={(event) => {
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", project.id);
+                onDragStart();
+            }}
+            onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                onDragOver();
+            }}
+            onDrop={(event) => {
+                event.preventDefault();
+                onDrop();
+            }}
+            onDragEnd={onDragEnd}
             title={project.name}
             className={cn(
                 "flex max-w-52 shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
                 active ? "bg-white/8 text-foreground" : "text-muted-foreground hover:bg-white/4 hover:text-foreground",
+                dragging && "opacity-40",
+                dragOver && !dragging && "ring-2 ring-primary/60",
             )}
         >
             <span className={cn("size-1.5 shrink-0 rounded-full", meta.dot)} />

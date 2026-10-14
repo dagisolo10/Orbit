@@ -1,6 +1,6 @@
 import { ServersContext, type ServerMutationResult, type ServersContextValue, type ServersLoadStatus } from "@/contexts/servers-context";
 import { useToast } from "@/contexts/toast-context";
-import { addServer, clearServerLogs, loadServers, removeServer, restartServer, startServer, stopServer, subscribeServerEvents, updateServer } from "@/services/servers";
+import { addServer, clearServerLogs, loadServers, removeServer, reorderServers, restartServer, startServer, stopServer, subscribeServerEvents, updateServer } from "@/services/servers";
 import type { OrbitError } from "@/services/orbit";
 import {
     SERVER_LOG_LIMIT,
@@ -151,6 +151,29 @@ export function ServersProvider({ children }: { children: ReactNode }) {
         [applyConfig, toast],
     );
 
+    const reorder = useCallback(
+        async (ids: string[]) => {
+            const previous = projects;
+            const byId = new Map(previous.map((project) => [project.id, project]));
+            const ordered = ids.map((id) => byId.get(id)).filter((project): project is ServerProject => Boolean(project));
+            // Keep any project the caller omitted (e.g. added mid-drag) at the end.
+            for (const project of previous) {
+                if (!ids.includes(project.id)) ordered.push(project);
+            }
+            setProjects(ordered);
+
+            const result = await reorderServers(ids);
+            if (result.ok) {
+                applyConfig(result.value);
+                return;
+            }
+
+            setProjects(previous);
+            toast({ title: result.error.message, description: result.error.detail, tone: "error" });
+        },
+        [applyConfig, projects, toast],
+    );
+
     const runAction = useCallback(
         async (id: string, action: "start" | "stop" | "restart") => {
             markBusy(id, true);
@@ -200,12 +223,13 @@ export function ServersProvider({ children }: { children: ReactNode }) {
             addProject,
             updateProject,
             removeProject,
+            reorder,
             start,
             stop,
             restart,
             clearLogs,
         }),
-        [status, error, projects, states, logs, activeId, activeProject, busyIds, load, addProject, updateProject, removeProject, start, stop, restart, clearLogs],
+        [status, error, projects, states, logs, activeId, activeProject, busyIds, load, addProject, updateProject, removeProject, reorder, start, stop, restart, clearLogs],
     );
 
     return <ServersContext.Provider value={value}>{children}</ServersContext.Provider>;

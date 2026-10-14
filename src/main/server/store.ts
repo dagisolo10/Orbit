@@ -166,6 +166,31 @@ export async function updateServerProject(id: string, draft: ServerProjectDraft)
     return next;
 }
 
+/**
+ * Reorders projects to match the given id order. Unknown ids are ignored, and
+ * any project missing from the input keeps its relative position at the end, so
+ * a stale renderer can never silently drop a project.
+ */
+export async function reorderServerProjects(orderedIds: string[]): Promise<ServerProject[]> {
+    const projects = await readServerProjects();
+    const remaining = new Map(projects.map((project) => [project.id, project]));
+    const next: ServerProject[] = [];
+
+    for (const id of orderedIds) {
+        const project = remaining.get(id);
+        if (!project) continue;
+        remaining.delete(id);
+        next.push(project);
+    }
+
+    for (const project of projects) {
+        if (remaining.has(project.id)) next.push(project);
+    }
+
+    await writeServerProjects(next);
+    return next;
+}
+
 /** Removes a project and returns the new list. */
 export async function removeServerProject(id: string): Promise<ServerProject[]> {
     const projects = await readServerProjects();

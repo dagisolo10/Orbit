@@ -67,6 +67,13 @@ function requireServerId(value: unknown): string {
     return value;
 }
 
+function coerceServerIds(input: unknown): string[] {
+    if (!Array.isArray(input)) {
+        throw new Error("Orbit could not read that project order.");
+    }
+    return input.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+}
+
 function toServerError(error: unknown, fallback: string): Error {
     if (error instanceof ServerConfigError) return new Error(error.message);
     console.error("[servers] Unexpected failure", error);
@@ -126,6 +133,14 @@ export function registerIpcHandlers() {
             return await serverService.remove(requireServerId(id));
         } catch (error) {
             throw toServerError(error, "Orbit could not remove that project.");
+        }
+    });
+
+    handleIpc("servers:reorder", async (ids) => {
+        try {
+            return await serverService.reorder(coerceServerIds(ids));
+        } catch (error) {
+            throw toServerError(error, "Orbit could not reorder your projects.");
         }
     });
 

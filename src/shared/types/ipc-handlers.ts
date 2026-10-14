@@ -23,6 +23,7 @@ export type IpcHandlers = {
     "servers:add": IpcHandler<ServerProjectsResult, [draft: ServerProjectDraft]>;
     "servers:update": IpcHandler<ServerProjectsResult, [id: string, draft: ServerProjectDraft]>;
     "servers:remove": IpcHandler<ServerProjectsResult, [id: string]>;
+    "servers:reorder": IpcHandler<ServerProjectsResult, [ids: string[]]>;
     "servers:start": IpcHandler<ServerRuntimeState, [id: string]>;
     "servers:stop": IpcHandler<ServerRuntimeState, [id: string]>;
     "servers:restart": IpcHandler<ServerRuntimeState, [id: string]>;
