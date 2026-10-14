@@ -1,7 +1,7 @@
 import type { OrbitSnapshot, ProjectOpenTarget } from "@/types/project";
 import type { AppInfo, LaunchAppCatalog, LaunchKind, LaunchPreference, LaunchPreferences, ProjectsRootState } from "@shared/types/settings";
 
-export type OrbitErrorCode = "BRIDGE_MISSING" | "SCAN_FAILED" | "OPEN_FAILED" | "SETTINGS_FAILED" | "PICK_FAILED" | "LAUNCHER_FAILED" | "APP_INFO_FAILED" | "EXTERNAL_FAILED";
+export type OrbitErrorCode = "BRIDGE_MISSING" | "SCAN_FAILED" | "OPEN_FAILED" | "SETTINGS_FAILED" | "PICK_FAILED" | "LAUNCHER_FAILED" | "APP_INFO_FAILED" | "EXTERNAL_FAILED" | "SERVERS_FAILED";
 
 export type OrbitError = {
     code: OrbitErrorCode;
@@ -85,13 +85,13 @@ export async function saveProjectsRoot(rootPath: string): Promise<Result<Project
 }
 
 /** Opens the native directory picker. Resolves to `null` when the user cancels. */
-export async function pickDirectory(defaultPath?: string): Promise<Result<string | null>> {
+export async function pickDirectory(defaultPath?: string, title?: string): Promise<Result<string | null>> {
     if (!hasPreloadBridge()) {
         return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
     }
 
     try {
-        const value = await window.api.invoke("dialog:pick-directory", defaultPath);
+        const value = await window.api.invoke("dialog:pick-directory", defaultPath, title);
         return { ok: true, value };
     } catch (error) {
         return { ok: false, error: { code: "PICK_FAILED", message: "Orbit could not open the folder picker.", detail: toMessage(error) } };

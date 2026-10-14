@@ -1,6 +1,7 @@
 import { electronAPI } from "@electron-toolkit/preload";
 import { IpcHandlers } from "@shared/types/ipc-handlers";
-import { contextBridge, ipcRenderer } from "electron";
+import { SERVER_EVENT_CHANNEL, type ServerEvent } from "@shared/types/server";
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 
 async function invoke<Channel extends keyof IpcHandlers>(channel: Channel, ...args: IpcHandlers[Channel]["args"]): Promise<IpcHandlers[Channel]["return"]> {
     return ipcRenderer.invoke(channel, ...args).catch((err: Error) => {
@@ -9,8 +10,19 @@ async function invoke<Channel extends keyof IpcHandlers>(channel: Channel, ...ar
     });
 }
 
+/**
+ * Subscribes to development-server runtime events (status changes and log
+ * lines) pushed from the main process. Returns an unsubscribe function.
+ */
+function onServerEvent(listener: (event: ServerEvent) => void): () => void {
+    const handler = (_event: IpcRendererEvent, payload: ServerEvent) => listener(payload);
+    ipcRenderer.on(SERVER_EVENT_CHANNEL, handler);
+    return () => ipcRenderer.removeListener(SERVER_EVENT_CHANNEL, handler);
+}
+
 const api = {
     invoke,
+    onServerEvent,
     // /** Scan the configured projects directory and return the discovered projects. */
     // scanProjects: () => invoke("projects:scan"),
     // /** Open a project in an external editor, terminal, or file manager. */

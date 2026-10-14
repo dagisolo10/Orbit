@@ -22,6 +22,23 @@ export function sortProjects(projects: Project[], sortKey: SortKey): Project[] {
     }
 }
 
+/**
+ * The single definition of what a project search term matches: its name, path,
+ * or any of its technologies. Shared by the explorer and the server project
+ * picker so their search behavior never drifts apart.
+ */
+export function projectMatchesTerm(project: Project, term: string): boolean {
+    const needle = term.trim().toLowerCase();
+    if (needle.length === 0) return true;
+    return project.name.toLowerCase().includes(needle) || project.path.toLowerCase().includes(needle) || project.technologies.some((tech) => tech.name.toLowerCase().includes(needle));
+}
+
+/** Filters a project list by a search term using the shared matching rule. */
+export function filterProjectsByQuery(projects: Project[], query: string): Project[] {
+    if (query.trim().length === 0) return projects;
+    return projects.filter((project) => projectMatchesTerm(project, query));
+}
+
 export function useVisibleProjects(scope: ProjectScope): Project[] {
     const { projects, allProjects, favorites, query, activeTech, activeCategory, sortKey } = useOrbit();
 
@@ -42,12 +59,7 @@ export function useVisibleProjects(scope: ProjectScope): Project[] {
             list = list.filter((project) => project.technologies.some((tech) => tech.category === activeCategory));
         }
 
-        const term = query.trim().toLowerCase();
-        if (term) {
-            list = list.filter(
-                (project) => project.name.toLowerCase().includes(term) || project.path.toLowerCase().includes(term) || project.technologies.some((tech) => tech.name.toLowerCase().includes(term)),
-            );
-        }
+        list = filterProjectsByQuery(list, query);
 
         return sortProjects(list, sortKey);
     }, [projects, allProjects, favorites, query, activeTech, activeCategory, sortKey, scope]);

@@ -6,6 +6,7 @@
         "types": ["electron-vite/node"],
         "paths": {
             "@main/*": ["./src/main/*"],
+            "@server/*": ["./src/main/server/*"],
             "@shared/*": ["./src/shared/*"],
             "@preload/*": ["./src/preload/*"]
         }

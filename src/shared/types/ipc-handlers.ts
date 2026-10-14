@@ -1,4 +1,5 @@
 import type { ProjectOpenTarget, ProjectScanResult } from "./project";
+import type { ServerProjectDraft, ServerProjectsResult, ServerRuntimeState, ServerSnapshot } from "./server";
 import type { AppInfo, LaunchAppCatalog, LaunchKind, LaunchPreference, LaunchPreferences, ProjectsRootState } from "./settings";
 
 type IpcHandler<ReturnType = void, Args = []> = {
@@ -14,7 +15,16 @@ export type IpcHandlers = {
     "settings:set-projects-root": IpcHandler<ProjectsRootState, [rootPath: string]>;
     "settings:get-launch-preferences": IpcHandler<LaunchPreferences>;
     "settings:set-launch-preference": IpcHandler<LaunchPreferences, [kind: LaunchKind, preference: LaunchPreference]>;
-    "dialog:pick-directory": IpcHandler<string | null, [defaultPath?: string]>;
+    "dialog:pick-directory": IpcHandler<string | null, [defaultPath?: string, title?: string]>;
     "app:get-info": IpcHandler<AppInfo>;
     "system:open-external": IpcHandler<void, [url: string]>;
+    "system:open-local-url": IpcHandler<void, [url: string]>;
+    "servers:list": IpcHandler<ServerSnapshot>;
+    "servers:add": IpcHandler<ServerProjectsResult, [draft: ServerProjectDraft]>;
+    "servers:update": IpcHandler<ServerProjectsResult, [id: string, draft: ServerProjectDraft]>;
+    "servers:remove": IpcHandler<ServerProjectsResult, [id: string]>;
+    "servers:start": IpcHandler<ServerRuntimeState, [id: string]>;
+    "servers:stop": IpcHandler<ServerRuntimeState, [id: string]>;
+    "servers:restart": IpcHandler<ServerRuntimeState, [id: string]>;
+    "servers:clear-logs": IpcHandler<void, [id: string]>;
 };

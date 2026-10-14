@@ -1,8 +1,12 @@
 import { listLaunchApps, validatePreference } from "@main/launcher/apps";
+import { isLocalUrl } from "@main/server/manager";
+import { serverService } from "@main/server/service";
+import { ServerConfigError } from "@main/server/store";
 import { openProject, ProjectActionError } from "@main/scanner/project-actions";
 import { ProjectScanError, scanProjects } from "@main/scanner/project-scanner";
 import { getLaunchPreferences, setLaunchPreference, SettingsError, getProjectsRootState, resolveProjectsRoot, setProjectsRoot } from "@main/settings/store";
 import { IpcHandlers } from "@shared/types/ipc-handlers";
+import type { ServerProjectDraft } from "@shared/types/server";
 import type { LaunchKind, LaunchPreference } from "@shared/types/settings";
 import { app, BrowserWindow, dialog, ipcMain, shell, type OpenDialogOptions } from "electron";
 
@@ -43,6 +47,32 @@ function isLaunchKind(value: unknown): value is LaunchKind {
     return value === "editor" || value === "terminal";
 }
 
+/** Re-validates renderer-supplied server draft fields, since IPC input is untrusted. */
+function coerceServerDraft(input: unknown): ServerProjectDraft {
+    if (!input || typeof input !== "object") {
+        throw new Error("Orbit could not read those project details.");
+    }
+    const candidate = input as Record<string, unknown>;
+    return {
+        name: typeof candidate["name"] === "string" ? candidate["name"] : "",
+        path: typeof candidate["path"] === "string" ? candidate["path"] : "",
+        command: typeof candidate["command"] === "string" ? candidate["command"] : "",
+    };
+}
+
+function requireServerId(value: unknown): string {
+    if (typeof value !== "string" || value.trim().length === 0) {
+        throw new Error("Orbit could not identify that project.");
+    }
+    return value;
+}
+
+function toServerError(error: unknown, fallback: string): Error {
+    if (error instanceof ServerConfigError) return new Error(error.message);
+    console.error("[servers] Unexpected failure", error);
+    return new Error(fallback);
+}
+
 export function registerIpcHandlers() {
     handleIpc("projects:scan", async () => {
         const rootPath = await resolveProjectsRoot();
@@ -72,6 +102,58 @@ export function registerIpcHandlers() {
     });
 
     handleIpc("launcher:list", () => listLaunchApps());
+
+    handleIpc("servers:list", () => serverService.snapshot());
+
+    handleIpc("servers:add", async (draft) => {
+        try {
+            return await serverService.add(coerceServerDraft(draft));
+        } catch (error) {
+            throw toServerError(error, "Orbit could not add that project.");
+        }
+    });
+
+    handleIpc("servers:update", async (id, draft) => {
+        try {
+            return await serverService.update(requireServerId(id), coerceServerDraft(draft));
+        } catch (error) {
+            throw toServerError(error, "Orbit could not save that project.");
+        }
+    });
+
+    handleIpc("servers:remove", async (id) => {
+        try {
+            return await serverService.remove(requireServerId(id));
+        } catch (error) {
+            throw toServerError(error, "Orbit could not remove that project.");
+        }
+    });
+
+    handleIpc("servers:start", async (id) => {
+        try {
+            return await serverService.start(requireServerId(id));
+        } catch (error) {
+            throw toServerError(error, "Orbit could not start that server.");
+        }
+    });
+
+    handleIpc("servers:stop", async (id) => {
+        try {
+            return await serverService.stop(requireServerId(id));
+        } catch (error) {
+            throw toServerError(error, "Orbit could not stop that server.");
+        }
+    });
+
+    handleIpc("servers:restart", async (id) => {
+        try {
+            return await serverService.restart(requireServerId(id));
+        } catch (error) {
+            throw toServerError(error, "Orbit could not restart that server.");
+        }
+    });
+
+    handleIpc("servers:clear-logs", (id) => serverService.clearLogs(requireServerId(id)));
 
     handleIpc("settings:get-projects-root", () => getProjectsRootState());
 
@@ -115,12 +197,12 @@ export function registerIpcHandlers() {
         }
     });
 
-    handleIpc("dialog:pick-directory", async (defaultPath) => {
+    handleIpc("dialog:pick-directory", async (defaultPath, title) => {
         const properties: OpenDialogOptions["properties"] = ["openDirectory"];
         if (process.platform === "darwin") properties.push("createDirectory");
 
         const options: OpenDialogOptions = {
-            title: "Select projects directory",
+            title: typeof title === "string" && title.length > 0 ? title : "Select projects directory",
             defaultPath: typeof defaultPath === "string" && defaultPath.length > 0 ? defaultPath : undefined,
             properties,
         };
@@ -137,6 +219,13 @@ export function registerIpcHandlers() {
     handleIpc("system:open-external", async (url) => {
         if (!isAllowedExternalUrl(url)) {
             throw new Error("Orbit can only open its own documentation and repository links.");
+        }
+        await shell.openExternal(url);
+    });
+
+    handleIpc("system:open-local-url", async (url) => {
+        if (typeof url !== "string" || !isLocalUrl(url)) {
+            throw new Error("Orbit can only open local development URLs.");
         }
         await shell.openExternal(url);
     });

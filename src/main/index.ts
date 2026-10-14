@@ -1,6 +1,7 @@
 import { electronApp, optimizer } from "@electron-toolkit/utils";
 import { registerIpcHandlers } from "@main/ipc/registration";
 import { scanDir } from "@main/scanner/scan";
+import { serverService } from "@main/server/service";
 import { resolveProjectsRoot } from "@main/settings/store";
 import { app, BrowserWindow, dialog } from "electron";
 
@@ -30,6 +31,10 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => process.platform !== "darwin" && closeWindow());
+
+// Development servers are spawned in their own process groups, so they are not
+// reaped automatically when Electron exits. Stop them explicitly on quit.
+app.on("before-quit", () => serverService.dispose());
 
 function createAndCloseWindow() {
     mainWindow = createWindow();

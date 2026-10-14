@@ -1,40 +1,52 @@
+import logo from "@/assets/logo.png";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useOrbit } from "@/contexts/orbit-context";
+import { useServers } from "@/contexts/servers-context";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { shortenPath } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { VIEW_META, type ViewId } from "@/types/navigation";
-import logo from "@/assets/logo.png";
-import { Boxes, FolderKanban, Layers, LayoutDashboard, Settings, Star, type LucideIcon } from "lucide-react";
+import { Boxes, ChevronLeft, ChevronRight, FolderKanban, Layers, LayoutDashboard, Server, Settings, Star, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 
 const NAV_ICON: Record<ViewId, LucideIcon> = {
     overview: LayoutDashboard,
     projects: FolderKanban,
+    servers: Server,
     workspaces: Boxes,
     technologies: Layers,
     favorites: Star,
     settings: Settings,
 };
 
-const PRIMARY_NAV: ViewId[] = ["overview", "projects", "workspaces", "technologies", "favorites"];
+const PRIMARY_NAV: ViewId[] = ["overview", "projects", "servers", "workspaces", "technologies", "favorites"];
 
 export function Sidebar({ view, onNavigate }: { view: ViewId; onNavigate: (view: ViewId) => void }) {
     const { projects, allProjects, workspaces, technologies, favorites, snapshot, projectsRoot } = useOrbit();
-    const compact = !useMediaQuery("(min-width: 1024px)");
+    const { states } = useServers();
+    const isNarrow = !useMediaQuery("(min-width: 1024px)");
+    const [collapsed, setCollapsed] = useLocalStorage<boolean>("orbit:sidebar-collapsed", false);
+    // Narrow windows are always compact; the manual toggle only applies when there is room to expand.
+    const compact = isNarrow || collapsed;
+
+    const runningServers = useMemo(() => Object.values(states).filter((state) => state.status === "running" || state.status === "starting").length, [states]);
 
     const counts = useMemo<Partial<Record<ViewId, number>>>(
         () => ({
             projects: projects.length,
+            servers: runningServers,
             workspaces: workspaces.length,
             technologies: technologies.length,
             favorites: allProjects.filter((project) => favorites.includes(project.path)).length,
         }),
-        [projects.length, allProjects, workspaces.length, technologies.length, favorites],
+        [projects.length, allProjects, runningServers, workspaces.length, technologies.length, favorites],
     );
 
     return (
-        <aside className={cn("flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar", compact ? "w-17" : "w-62")}>
+        <aside className={cn("relative flex h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-500 ease-out", compact ? "w-17" : "w-62")}>
+            {!isNarrow ? <SidebarToggle collapsed={compact} onToggle={() => setCollapsed((value) => !value)} /> : null}
+
             <Brand compact={compact} />
 
             <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5 py-4">
@@ -54,6 +66,24 @@ export function Sidebar({ view, onNavigate }: { view: ViewId; onNavigate: (view:
                 <NavItem id="settings" active={view === "settings"} compact={compact} onNavigate={onNavigate} />
             </div>
         </aside>
+    );
+}
+
+/** Faded control that sits on the sidebar's right border and toggles its width. */
+function SidebarToggle({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+    const Icon = collapsed ? ChevronRight : ChevronLeft;
+    const label = collapsed ? "Expand sidebar" : "Collapse sidebar";
+
+    return (
+        <button
+            type="button"
+            onClick={onToggle}
+            aria-label={label}
+            title={label}
+            className="absolute top-6 right-0 z-100 inline-flex size-6 translate-x-1/2 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-muted-foreground shadow-[0_2px_8px_-2px_rgba(0,0,0,0.6)]  transition hover:text-foreground  focus-visible:ring-2 focus-visible:ring-sidebar-ring "
+        >
+            <Icon className="size-3.5" />
+        </button>
     );
 }
 

@@ -30,6 +30,7 @@ Everything runs locally and updates whenever you hit rescan.
 - **Technologies explorer** — Browse your stack and jump straight to every project that uses a given technology.
 - **Favorites** — Star the projects you use most for quick access, including projects that live inside a workspace.
 - **Quick actions** — Open any project — or an entire workspace root — in an external editor, open a terminal at its path, reveal it in your file manager, or copy its path.
+- **Development server manager** — Save the dev commands you run most (such as `npm run dev`) and start, stop, and restart them from Orbit. Each server streams its live output into a built-in terminal, and any localhost URL it prints is detected automatically.
 - **Rescan on demand** — Refresh the workspace whenever you add or change projects.
 - **Settings** — General (projects directory, rescan, theme), application preferences (editor and terminal, with automatic detection of what is installed), and an About panel.
 - **Polished dark UI** — A responsive React + Tailwind interface with skeletons, empty states, and clear error banners.
@@ -91,20 +92,22 @@ Orbit follows a strict separation between the filesystem and the UI.
 main process (Node)                 preload                renderer (React)
 ─────────────────────               ───────                ────────────────
 scanner + settings ──► ipcMain.handle  ──►  contextBridge  ──►  window.api.invoke(...)
-+ launcher            ("projects:scan",      (window.api)          │
-                       "project:open",                             ▼
++ launcher + server   ("projects:scan",      (window.api)          │
+  manager              "project:open",                             ▼
                        "launcher:list",                    OrbitProvider ──► views
-                       "settings:*",
-                       "app:get-info",
+                       "servers:*",                              ▲
+                       "settings:*",                             │
+                       "app:get-info",                    "servers:event" push
                        "system:open-external",
                        "dialog:pick-directory")
 ```
 
 1. **Scan (main process)** — `src/main/scanner` walks your projects directory (the saved selection, or `~/Projects` by default), parses each `package.json`, matches dependencies against a known technology list, and detects workspace roots. Member packages are grouped under their closest workspace; everything else is returned as a standalone project. Filesystem access never leaves the main process.
 2. **Settings & launch (main process)** — `src/main/settings` persists your projects root and your editor/terminal preferences to a small JSON file under the app's user-data directory and validates them before saving. `src/main/launcher` holds the catalogue of known editors and terminals, checks which are actually installed (including Flatpak and Snap wrappers), and builds the correct arguments for each. `src/main/scanner/project-actions.ts` spawns the chosen application directly — never through a shell.
-3. **Bridge (preload)** — A single, narrow `window.api.invoke(channel, ...args)` method is exposed through `contextBridge` with `contextIsolation` enabled. There is no `nodeIntegration` in the renderer.
-4. **State (renderer)** — `OrbitProvider` loads the projects root and the snapshot once on mount, derives technology statistics and the combined project list (standalone + workspace members), and drives every view. Rescans keep the last good results on screen if something goes wrong.
-5. **Views** — Overview, All Projects, Workspaces, Technologies, Favorites, and Settings render from that single source of truth.
+3. **Servers (main process)** — `src/main/server` owns the development-server lifecycle: it persists configurations in `servers.json`, spawns each command (tokenized, `shell: false`), detects localhost URLs in the output, streams state and log lines to the renderer over the single `servers:event` channel, and tears down the whole process tree on stop. Process handles never cross the IPC boundary.
+4. **Bridge (preload)** — A single, narrow `window.api.invoke(channel, ...args)` method is exposed through `contextBridge` with `contextIsolation` enabled, plus one `servers:event` subscription for pushed state. There is no `nodeIntegration` in the renderer.
+5. **State (renderer)** — `OrbitProvider` loads the projects root and the snapshot once on mount, derives technology statistics and the combined project list (standalone + workspace members), and drives every view. Rescans keep the last good results on screen if something goes wrong.
+6. **Views** — Overview, All Projects, Workspaces, Technologies, Servers, Favorites, and Settings render from that single source of truth.
 
 ### Where Orbit looks
 
@@ -142,6 +145,20 @@ Open **Settings → Applications** to pick a preferred editor and terminal. Orbi
 
 Custom commands are tokenized in the main process and spawned directly with `shell: false`, so arguments such as `code --wait` work without Orbit ever constructing a shell string. If a configured application is missing or fails to launch, Orbit tells you which one and points you back to Settings rather than silently opening something else.
 
+## Development server manager
+
+Orbit keeps the long-running processes you use every day — dev servers, watchers, backends — in one place instead of scattered across terminal windows.
+
+From the **Servers** view, add a project by picking one of your scanned projects (or browsing to a folder) and giving it a display name and the command to run, for example `npm run dev`. Configurations are stored in a small JSON file under the app's user-data directory and restored on the next launch. Orbit never starts a server on its own: everything stays stopped until you ask for it.
+
+Each configured server shows its live state — **starting**, **running**, **stopping**, **stopped**, or **failed** — along with its process id, and when it stops, the exit code or signal. Use the toolbar to:
+
+- **Start**, **Stop**, and **Restart** the process.
+- Open any detected **localhost URL** in your browser with one click.
+- Follow the built-in terminal, which streams the process's `stdout`, `stderr`, and system messages, and **Clear** the buffer when you want a fresh view.
+
+Stopping a server tears down the whole process tree, so child processes a dev server spawns are cleaned up too. Just like the project launcher, commands are tokenized in the main process and spawned with `shell: false` — never interpreted as shell syntax. Recent output is capped per server so memory stays bounded, and an unexpected exit is reported with its code instead of failing silently.
+
 ## Tech stack
 
 - **Electron** + **electron-vite** for the desktop shell and builds
@@ -157,6 +174,7 @@ src/
 ├─ main/               # Electron main process
 │  ├─ scanner/         # Project scanning, tech detection, and open-project actions
 │  ├─ launcher/        # Editor/terminal catalogue, availability detection, and argument building
+│  ├─ server/          # Development-server lifecycle, persistence, logs, and URL detection
 │  ├─ settings/        # JSON persistence for the projects root and app preferences
 │  ├─ ipc/             # Typed IPC handler registration
 │  └─ window/          # BrowserWindow creation
