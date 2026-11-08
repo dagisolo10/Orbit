@@ -5,7 +5,7 @@ export function Kbd({ children, className }: { children: ReactNode; className?: 
     return (
         <kbd
             className={cn(
-                "inline-flex h-5 min-w-5 items-center justify-center rounded border border-white/10 bg-white/5 px-1.5 font-sans text-[11px] font-medium leading-none text-muted-foreground",
+                "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[2px] border border-line bg-panel-inset px-1 font-mono text-[10px] leading-none font-medium tracking-[0.04em] text-ink-muted",
                 className,
             )}
         >

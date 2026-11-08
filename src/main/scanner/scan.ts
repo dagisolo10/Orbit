@@ -9,14 +9,11 @@ type Workspace = {
     projects: Project[];
 };
 
-let count = 0;
-export const projects: Project[] = [];
-export const workspaceMap = new Map<string, Workspace>();
+const projects: Project[] = [];
+const workspaceMap = new Map<string, Workspace>();
 
 export async function scanDir(fullPath: string) {
     try {
-        count += 1;
-
         const dirPath = path.join(fullPath);
 
         const entries = await readdir(dirPath, { withFileTypes: true });

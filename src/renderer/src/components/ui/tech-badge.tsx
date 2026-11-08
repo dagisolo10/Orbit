@@ -1,21 +1,24 @@
 import { TechIcon } from "@/components/ui/tech-icon";
-import { getCategoryMeta, getTechLabel } from "@/lib/tech";
+import { getTechLabel } from "@/lib/tech";
 import { cn } from "@/lib/utils";
 import type { Technology } from "@/types/project";
 
+/**
+ * A compact technical label with the technology's brand mark. Icons carry
+ * recognition; the surrounding hairline keeps stacks scannable without loud
+ * coloured pills.
+ */
 export function TechBadge({ technology, onClick, className }: { technology: Technology; onClick?: () => void; className?: string }) {
     const label = getTechLabel(technology.name);
-    const meta = getCategoryMeta(technology.category);
     const classes = cn(
-        "inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset",
-        meta.className,
-        onClick && "cursor-pointer transition-transform hover:scale-[1.04]",
+        "inline-flex max-w-full items-center gap-1.5 rounded-[2px] border border-line-soft bg-panel-inset px-1.5 py-[3px] font-mono text-[10px] leading-none text-ink-soft transition-colors",
+        onClick && "cursor-pointer hover:border-line-strong hover:text-ink focus-visible:border-accent",
         className,
     );
 
     const content = (
         <>
-            <TechIcon name={technology.name} className="size-3" />
+            <TechIcon name={technology.name} className="size-3.5" />
             <span className="truncate">{label}</span>
         </>
     );

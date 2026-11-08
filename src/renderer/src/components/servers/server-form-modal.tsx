@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Monogram } from "@/components/ui/monogram";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TechBadge } from "@/components/ui/tech-badge";
 import { useOrbit } from "@/contexts/orbit-context";
 import { type ServerMutationResult } from "@/contexts/servers-context";
@@ -11,12 +12,12 @@ import { pickDirectory } from "@/services/orbit";
 import type { Project } from "@/types/project";
 import type { ServerProject, ServerProjectDraft } from "@shared/types/server";
 import { Check, FolderSearch, Search, TriangleAlert } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 const INPUT_CLASS =
-    "h-9 w-full rounded-lg border border-white/8 bg-white/3 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/40 focus:bg-white/5 focus:ring-2 focus:ring-ring/40";
+    "h-8 w-full rounded-[2px] border border-line bg-panel-inset px-2.5 text-[12px] text-ink outline-none transition-colors placeholder:text-ink-muted/70 hover:border-line-strong focus:border-accent/70 focus:bg-panel focus:ring-1 focus:ring-accent/30";
 
-const LABEL_CLASS = "text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase";
+const LABEL_CLASS = "label-mono text-ink-muted";
 
 const MAX_VISIBLE_PROJECTS = 40;
 
@@ -41,19 +42,6 @@ export function ServerFormModal({
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [browsing, setBrowsing] = useState(false);
-
-    useEffect(() => {
-        if (!open) return;
-        setName(project?.name ?? "");
-        setProjectPath(project?.path ?? "");
-        setCommand(project?.command ?? "");
-        setSearch("");
-        // When editing, the existing name is deliberate — never overwrite it on selection.
-        setNameTouched(project !== null);
-        setError(null);
-        setSubmitting(false);
-        setBrowsing(false);
-    }, [open, project]);
 
     const matches = useMemo(() => sortProjects(filterProjectsByQuery(allProjects, search), "name-asc"), [allProjects, search]);
     const visibleMatches = matches.slice(0, MAX_VISIBLE_PROJECTS);
@@ -109,6 +97,7 @@ export function ServerFormModal({
             onClose={onClose}
             title={project ? "Edit project" : "Add project"}
             description={project ? "Update this development server's details." : "Search your Orbit workspace for a project, then set how its dev server starts."}
+            className="max-w-xl"
             footer={
                 <>
                     <Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>
@@ -122,17 +111,17 @@ export function ServerFormModal({
         >
             <div className="space-y-4">
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                         <label className={LABEL_CLASS} htmlFor="server-search">
-                            Project
+                            PROJECT
                         </label>
-                        {hasDiscoveries ? <span className="text-[11px] text-muted-foreground/70">{allProjects.length} discovered</span> : null}
+                        {hasDiscoveries ? <span className="font-mono text-[9px] text-ink-muted/70">{allProjects.length} DISCOVERED</span> : null}
                     </div>
 
                     {hasDiscoveries ? (
                         <>
                             <div className="relative">
-                                <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground/70" strokeWidth={2} />
+                                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-ink-muted/70" strokeWidth={1.9} />
                                 <input
                                     id="server-search"
                                     value={search}
@@ -141,16 +130,16 @@ export function ServerFormModal({
                                     spellCheck={false}
                                     autoFocus={!project}
                                     autoComplete="off"
-                                    className={cn(INPUT_CLASS, "pl-9")}
+                                    className={cn(INPUT_CLASS, "pl-8")}
                                 />
                             </div>
 
-                            <div className="overflow-hidden rounded-xl border border-white/8 bg-white/1.5">
+                            <div className="overflow-hidden rounded-[2px] border border-line bg-panel-inset">
                                 <div className="max-h-48 overflow-y-auto p-1">
                                     {status === "loading" ? (
                                         <ProjectPickerSkeleton />
                                     ) : visibleMatches.length === 0 ? (
-                                        <p className="px-3 py-6 text-center text-xs text-muted-foreground">No discovered projects match “{search.trim()}”.</p>
+                                        <p className="px-3 py-6 text-center font-mono text-[10px] text-ink-muted">No discovered projects match “{search.trim()}”.</p>
                                     ) : (
                                         visibleMatches.map((candidate) => (
                                             <ProjectOption key={candidate.path} project={candidate} selected={candidate.path === projectPath} onSelect={() => chooseProject(candidate)} />
@@ -158,41 +147,58 @@ export function ServerFormModal({
                                     )}
                                 </div>
                                 {matches.length > visibleMatches.length ? (
-                                    <p className="border-t border-white/8 px-3 py-1.5 text-center text-[11px] text-muted-foreground/70">
+                                    <p className="border-t border-line px-3 py-1.5 text-center font-mono text-[9px] text-ink-muted/70">
                                         Showing {visibleMatches.length} of {matches.length} matches — keep typing to narrow down.
                                     </p>
                                 ) : null}
                             </div>
                         </>
                     ) : (
-                        <p className="rounded-xl border border-dashed border-white/10 bg-white/1.5 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+                        <p className="rounded-[2px] border border-dashed border-line bg-panel-inset px-3 py-3 font-mono text-[10px] leading-relaxed text-ink-muted">
                             {status === "loading" ? "Looking for projects in your Orbit workspace…" : "Orbit hasn't discovered any projects yet. Browse for a folder to run a server from anywhere."}
                         </p>
                     )}
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className={LABEL_CLASS} htmlFor="server-name">
-                        Display name
-                    </label>
-                    <input
-                        id="server-name"
-                        value={name}
-                        onChange={(event) => {
-                            setNameTouched(true);
-                            setName(event.target.value);
-                        }}
-                        onKeyDown={(event) => event.key === "Enter" && void submit()}
-                        placeholder="Orbit docs"
-                        spellCheck={false}
-                        autoFocus={project !== null || !hasDiscoveries}
-                        className={INPUT_CLASS}
-                    />
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                        <label className={LABEL_CLASS} htmlFor="server-name">
+                            DISPLAY NAME
+                        </label>
+                        <input
+                            id="server-name"
+                            value={name}
+                            onChange={(event) => {
+                                setNameTouched(true);
+                                setName(event.target.value);
+                            }}
+                            onKeyDown={(event) => event.key === "Enter" && void submit()}
+                            placeholder="Orbit docs"
+                            spellCheck={false}
+                            autoFocus={project !== null || !hasDiscoveries}
+                            className={INPUT_CLASS}
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className={LABEL_CLASS} htmlFor="server-command">
+                            STARTUP COMMAND
+                        </label>
+                        <input
+                            id="server-command"
+                            value={command}
+                            onChange={(event) => setCommand(event.target.value)}
+                            onKeyDown={(event) => event.key === "Enter" && void submit()}
+                            placeholder="npm run dev"
+                            spellCheck={false}
+                            className={cn(INPUT_CLASS, "font-mono text-[11px]")}
+                        />
+                    </div>
                 </div>
 
                 <div className="space-y-1.5">
                     <label className={LABEL_CLASS} htmlFor="server-path">
-                        Project folder
+                        PROJECT FOLDER
                     </label>
                     <div className="flex items-center gap-2">
                         <input
@@ -202,14 +208,14 @@ export function ServerFormModal({
                             onKeyDown={(event) => event.key === "Enter" && void submit()}
                             placeholder="/home/you/projects/docs"
                             spellCheck={false}
-                            className={cn(INPUT_CLASS, "font-mono text-xs")}
+                            className={cn(INPUT_CLASS, "font-mono text-[11px]")}
                         />
-                        <Button variant="secondary" size="sm" onClick={() => void browse()} disabled={browsing || submitting}>
+                        <Button variant="secondary" size="sm" className="shrink-0" onClick={() => void browse()} disabled={browsing || submitting}>
                             <FolderSearch className="size-3.5" strokeWidth={1.9} />
                             {browsing ? "Opening…" : "Browse"}
                         </Button>
                     </div>
-                    <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    <p className="font-mono text-[9px] leading-relaxed text-ink-muted">
                         {selectedProject
                             ? "Selected from your workspace — Orbit already knows this project."
                             : hasDiscoveries
@@ -218,26 +224,14 @@ export function ServerFormModal({
                     </p>
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className={LABEL_CLASS} htmlFor="server-command">
-                        Startup command
-                    </label>
-                    <input
-                        id="server-command"
-                        value={command}
-                        onChange={(event) => setCommand(event.target.value)}
-                        onKeyDown={(event) => event.key === "Enter" && void submit()}
-                        placeholder="npm run dev"
-                        spellCheck={false}
-                        className={cn(INPUT_CLASS, "font-mono text-xs")}
-                    />
-                    <p className="text-[11px] leading-relaxed text-muted-foreground">Orbit runs this command in the project folder. It is spawned directly — never through a shell.</p>
-                </div>
+                <p className="border-t border-line pt-3 font-mono text-[9px] leading-relaxed text-ink-muted">
+                    Orbit runs the startup command in the project folder. It is spawned directly — never through a shell.
+                </p>
 
                 {error ? (
-                    <div className="flex items-start gap-2.5 rounded-lg border border-red-400/20 bg-red-400/6 px-3 py-2.5">
-                        <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-red-300" strokeWidth={1.9} />
-                        <p className="text-xs leading-relaxed text-red-200/90">{error}</p>
+                    <div className="flex items-start gap-2.5 rounded-[2px] border border-danger/30 bg-danger/6 px-3 py-2.5">
+                        <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-danger" strokeWidth={1.9} />
+                        <p className="text-[11px] leading-relaxed text-danger/90">{error}</p>
                     </div>
                 ) : null}
             </div>
@@ -252,14 +246,14 @@ function ProjectOption({ project, selected, onSelect }: { project: Project; sele
             onClick={onSelect}
             aria-pressed={selected}
             className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                selected ? "bg-primary/12" : "hover:bg-white/5",
+                "flex w-full items-center gap-2.5 rounded-[1px] border-l-2 px-2 py-1.5 text-left outline-none transition-colors focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset",
+                selected ? "border-accent bg-accent/8" : "border-transparent hover:bg-white/3",
             )}
         >
             <Monogram name={project.name} size="sm" />
             <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-medium text-foreground">{project.name || "Untitled project"}</span>
-                <span className="block truncate font-mono text-[11px] text-muted-foreground" title={project.path}>
+                <span className="block truncate text-[12px] font-medium text-ink">{project.name || "Untitled project"}</span>
+                <span className="block truncate font-mono text-[9px] text-ink-muted" title={project.path}>
                     {shortenPath(project.path, 44)}
                 </span>
             </span>
@@ -268,7 +262,7 @@ function ProjectOption({ project, selected, onSelect }: { project: Project; sele
                     <TechBadge key={tech.name} technology={tech} />
                 ))}
             </span>
-            {selected ? <Check className="size-4 shrink-0 text-primary" strokeWidth={2.4} /> : null}
+            {selected ? <Check className="size-3.5 shrink-0 text-accent" strokeWidth={2.4} /> : null}
         </button>
     );
 }
@@ -277,12 +271,12 @@ function ProjectPickerSkeleton() {
     return (
         <div className="space-y-1">
             {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="flex items-center gap-3 px-2.5 py-2">
-                    <span className="size-7 shrink-0 animate-pulse rounded-lg bg-white/6" />
-                    <span className="flex-1 space-y-1.5">
-                        <span className="block h-3 w-32 animate-pulse rounded bg-white/6" />
-                        <span className="block h-2.5 w-44 animate-pulse rounded bg-white/5" />
-                    </span>
+                <div key={index} className="flex items-center gap-2.5 px-2 py-1.5">
+                    <Skeleton className="size-6 shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-2.5 w-32" />
+                        <Skeleton className="h-2 w-44" />
+                    </div>
                 </div>
             ))}
         </div>

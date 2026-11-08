@@ -54,8 +54,9 @@ export function Tooltip({ label, side = "top", children, className }: { label: R
                       <span
                           role="tooltip"
                           style={{ top: coords.top, left: coords.left, transform: coords.transform }}
-                          className="animate-in fade-in-0 pointer-events-none fixed z-70 w-max max-w-[16rem] rounded-md border border-white/10 bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-xl"
+                          className="animate-in fade-in-0 pointer-events-none fixed z-70 flex w-max max-w-[18rem] items-center gap-1.5 rounded-[2px] border border-line-strong bg-panel-raised px-2 py-1 font-mono text-[10px] font-medium tracking-[0.06em] text-ink shadow-[0_12px_32px_-12px_rgba(0,0,0,0.9)]"
                       >
+                          <span aria-hidden className="size-1 shrink-0 bg-accent" />
                           {label}
                       </span>,
                       document.body,

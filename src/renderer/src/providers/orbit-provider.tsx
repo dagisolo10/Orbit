@@ -15,7 +15,6 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     const [reScanning, setReScanning] = useState(false);
     const [projectsRoot, setProjectsRoot] = useState<ProjectsRootState | null>(null);
     const [changingProjectsRoot, setChangingProjectsRoot] = useState(false);
-    const [query, setQuery] = useState("");
     const [activeTech, setActiveTech] = useState<Technology | null>(null);
     const [activeCategory, setActiveCategory] = useState<TechnologyCategory | null>(null);
 
@@ -175,22 +174,19 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
     }, [allProjects]);
 
     const clearFilters = useCallback(() => {
-        setQuery("");
         setActiveTech(null);
         setActiveCategory(null);
     }, []);
 
-    const hasActiveFilters = query.trim().length > 0 || activeTech !== null || activeCategory !== null;
+    const hasActiveFilters = activeTech !== null || activeCategory !== null;
 
     const value = useMemo<OrbitContextValue>(
         () => ({
             status,
             error,
-            query,
             reload,
             reScan,
             sortKey,
-            setQuery,
             snapshot,
             projects,
             allProjects,
@@ -216,7 +212,6 @@ export function OrbitProvider({ children }: { children: ReactNode }) {
         }),
         [
             error,
-            query,
             status,
             reload,
             reScan,

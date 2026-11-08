@@ -8,7 +8,7 @@ export type ToastInput = {
     tone?: ToastTone;
 };
 
-export type ToastRecord = ToastInput & { id: string; tone: ToastTone };
+export type ToastRecord = ToastInput & { id: string; tone: ToastTone; at: number };
 
 export type ToastContextValue = {
     toast: (input: ToastInput) => void;

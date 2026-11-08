@@ -30,8 +30,6 @@ export type OrbitContextValue = {
     favorites: string[];
     isFavorite: (path: string) => boolean;
     toggleFavorite: (path: string) => void;
-    query: string;
-    setQuery: (value: string) => void;
     activeTech: Technology | null;
     setActiveTech: (value: Technology | null) => void;
     activeCategory: TechnologyCategory | null;

@@ -3,10 +3,10 @@ import type { ServerLogLine, ServerLogStream } from "@shared/types/server";
 import { ArrowDownToLine } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const STREAM_CLASS: Record<ServerLogStream, string> = {
-    stdout: "text-foreground/85",
-    stderr: "text-red-300/90",
-    system: "text-primary/85",
+const STREAM_META: Record<ServerLogStream, { label: string; dot: string; text: string }> = {
+    stdout: { label: "OUT", dot: "bg-ok/70", text: "text-ink-soft" },
+    stderr: { label: "ERR", dot: "bg-danger", text: "text-danger/90" },
+    system: { label: "SYS", dot: "bg-accent", text: "text-accent/90" },
 };
 
 /**
@@ -41,17 +41,32 @@ export function ServerTerminal({ lines, emptyHint }: { lines: ServerLogLine[]; e
 
     return (
         <div className="relative flex min-h-0 flex-1 flex-col">
-            <div ref={containerRef} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto bg-black/25 px-4 py-3 font-mono text-xs leading-relaxed" role="log" aria-live="polite">
-                {lines.length === 0 ? <p className="text-muted-foreground/55">{emptyHint ?? "No output yet."}</p> : lines.map((line) => <LogRow key={line.seq} line={line} />)}
+            <div
+                ref={containerRef}
+                onScroll={onScroll}
+                className="min-h-0 flex-1 overflow-y-auto bg-panel-inset py-2 font-mono text-[11px] leading-relaxed"
+                role="log"
+                aria-live="polite"
+            >
+                {lines.length === 0 ? (
+                    <div className="dot-grid flex h-full min-h-32 flex-col items-center justify-center gap-1.5 px-4 text-center">
+                        <p className="label-mono text-ink-muted">
+                            <span className="text-accent">{"//"}</span> NO OUTPUT
+                        </p>
+                        <p className="max-w-sm text-[11px] text-ink-muted/80">{emptyHint ?? "No output yet."}</p>
+                    </div>
+                ) : (
+                    lines.map((line) => <LogRow key={line.seq} line={line} />)
+                )}
             </div>
 
             {!stuck && lines.length > 0 ? (
                 <button
                     type="button"
                     onClick={jumpToLatest}
-                    className="absolute right-4 bottom-4 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-popover/95 px-2.5 py-1.5 text-[11px] font-medium text-foreground shadow-lg backdrop-blur transition-colors hover:bg-popover"
+                    className="absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-[2px] border border-line-strong bg-panel-raised/95 px-2.5 py-1.5 font-mono text-[9px] tracking-[0.08em] text-ink uppercase shadow-lg backdrop-blur transition-colors hover:border-accent/60 hover:text-ink focus-visible:ring-1 focus-visible:ring-accent"
                 >
-                    <ArrowDownToLine className="size-3.5" strokeWidth={1.9} />
+                    <ArrowDownToLine className="size-3" strokeWidth={1.9} />
                     Jump to latest
                 </button>
             ) : null}
@@ -61,6 +76,17 @@ export function ServerTerminal({ lines, emptyHint }: { lines: ServerLogLine[]; e
 
 function LogRow({ line }: { line: ServerLogLine }) {
     const isError = line.stream === "system" && line.text.startsWith("✖");
-    const className = isError ? "text-red-300/90" : STREAM_CLASS[line.stream];
-    return <p className={cn("whitespace-pre-wrap break-words", className)}>{line.text.length > 0 ? line.text : "\u00A0"}</p>;
+    const meta = STREAM_META[line.stream];
+    const tone = isError ? "text-danger/90" : meta.text;
+
+    return (
+        <div className="group grid grid-cols-[34px_30px_minmax(0,1fr)] items-start gap-2 px-3 py-0.5 transition-colors hover:bg-white/[0.025]">
+            <span className="text-right text-[9px] leading-[1.65] text-ink-muted/50 tabular-nums select-none">{String(line.seq).padStart(3, "0")}</span>
+            <span className={cn("flex items-center gap-1 text-[8px] leading-[1.85] tracking-[0.08em]", isError ? "text-danger/80" : "text-ink-muted/70")}>
+                <span aria-hidden className={cn("size-1 rounded-[0.5px]", isError ? "bg-danger" : meta.dot)} />
+                {meta.label}
+            </span>
+            <p className={cn("whitespace-pre-wrap break-words", tone)}>{line.text.length > 0 ? line.text : "\u00A0"}</p>
+        </div>
+    );
 }

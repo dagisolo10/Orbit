@@ -106,7 +106,7 @@ export function Dropdown({ items, label, align = "start", side = "bottom", heade
                           aria-label={label}
                           style={{ top: coords?.top ?? -9999, left: coords?.left ?? -9999 }}
                           className={cn(
-                              "fixed z-90 min-w-48 overflow-hidden rounded-xl border border-white/10 bg-popover/95 p-1 text-sm shadow-2xl shadow-black/50 backdrop-blur-xl",
+                              "animate-in fade-in-0 slide-in-from-top-1 fixed z-90 min-w-52 overflow-hidden rounded-[2px] border border-line-strong bg-panel-raised/98 p-1 text-[13px] shadow-[0_20px_50px_-16px_rgba(0,0,0,0.95)] backdrop-blur-md duration-100",
                               !coords && "invisible",
                               panelClassName,
                           )}
@@ -114,7 +114,7 @@ export function Dropdown({ items, label, align = "start", side = "bottom", heade
                           {header}
                           {items.map((item, index) =>
                               item.type === "separator" ? (
-                                  <div key={item.id ?? `separator-${index}`} role="separator" className="my-1 h-px bg-white/8" />
+                                  <div key={item.id ?? `separator-${index}`} role="separator" className="my-1 h-px bg-line" />
                               ) : (
                                   <button
                                       key={item.id}
@@ -126,14 +126,16 @@ export function Dropdown({ items, label, align = "start", side = "bottom", heade
                                           close();
                                       }}
                                       className={cn(
-                                          "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] outline-none transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-                                          item.danger ? "text-red-300 hover:bg-red-500/10 enabled:focus-visible:bg-red-500/10" : "text-foreground/90 hover:bg-white/8 enabled:focus-visible:bg-white/8",
+                                          "flex w-full items-center gap-2.5 rounded-[1px] border-l-2 border-transparent px-2.5 py-1.5 text-left outline-none transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+                                          item.danger
+                                              ? "text-danger hover:border-danger hover:bg-danger/10 enabled:focus-visible:border-danger enabled:focus-visible:bg-danger/10"
+                                              : "text-ink-soft hover:border-accent/60 hover:bg-white/4 hover:text-ink enabled:focus-visible:border-accent/60 enabled:focus-visible:bg-white/[0.04] enabled:focus-visible:text-ink",
                                       )}
                                   >
-                                      {item.icon ? <item.icon className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} /> : <span className="size-4 shrink-0" />}
+                                      {item.icon ? <item.icon className="size-3.5 shrink-0 text-ink-muted" strokeWidth={1.75} /> : <span className="size-3.5 shrink-0" />}
                                       <span className="flex-1 truncate">{item.label}</span>
-                                      {item.hint ? <span className="shrink-0 text-[11px] text-muted-foreground/70">{item.hint}</span> : null}
-                                      {item.checked ? <Check className="size-3.5 shrink-0 text-primary" strokeWidth={2.5} /> : null}
+                                      {item.hint ? <span className="shrink-0 font-mono text-[9px] tracking-[0.06em] text-ink-muted uppercase">{item.hint}</span> : null}
+                                      {item.checked ? <Check className="size-3.5 shrink-0 text-accent" strokeWidth={2.5} /> : null}
                                   </button>
                               ),
                           )}

@@ -2,32 +2,31 @@ import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-export function SettingSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+export function SettingSection({ id, description, children }: { id?: string; description?: string; children: ReactNode }) {
     return (
-        <section className="overflow-hidden rounded-2xl border border-white/8 bg-white/1.5">
-            <div className="border-b border-white/6 px-4 py-3">
-                <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-                {description ? <p className="mt-0.5 text-xs text-muted-foreground">{description}</p> : null}
-            </div>
-            <div className="divide-y divide-white/6">{children}</div>
+        <section id={id} className="scroll-mt-4">
+            {description ? <p className="mt-2 max-w-2xl text-[12px] leading-relaxed text-ink-soft">{description}</p> : null}
+            <div className="mt-3 divide-y divide-line-soft border-y border-line">{children}</div>
         </section>
     );
 }
 
 export function SettingRow({ icon: Icon, label, value, mono, badge, action }: { icon: LucideIcon; label: string; value: ReactNode; mono?: boolean; badge?: ReactNode; action?: ReactNode }) {
     return (
-        <div className="flex items-center gap-3 px-4 py-3">
-            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/8 bg-white/3 text-muted-foreground">
-                <Icon className="size-4" strokeWidth={1.85} />
-            </span>
-            <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-medium text-foreground">{label}</p>
-                <p className={cn("truncate text-xs text-muted-foreground", mono && "font-mono")} title={typeof value === "string" ? value : undefined}>
+        <div className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-3 py-3">
+            <Icon className="size-3.5 text-ink-muted" strokeWidth={1.75} />
+            <div className="min-w-0">
+                <p className="text-[12px] font-medium text-ink">{label}</p>
+                <p className={cn("mt-0.5 truncate text-[11px] text-ink-muted", mono && "font-mono text-[10px]")} title={typeof value === "string" ? value : undefined}>
                     {value}
                 </p>
             </div>
-            {badge ? <div className="shrink-0">{badge}</div> : null}
-            {action ? <div className="shrink-0">{action}</div> : null}
+            {badge || action ? (
+                <div className="flex shrink-0 items-center gap-2">
+                    {badge}
+                    {action}
+                </div>
+            ) : null}
         </div>
     );
 }

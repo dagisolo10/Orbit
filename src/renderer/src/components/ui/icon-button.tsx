@@ -15,8 +15,18 @@ type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 export function IconButton({ icon: Icon, label, side = "top", size = "md", active = false, className, ...props }: IconButtonProps) {
     return (
         <Tooltip label={label} side={side}>
-            <Button aria-label={label} variant="ghost" className={cn(size === "md" ? "size-9 px-0" : "size-8 px-0", active && "bg-white/8 text-foreground", className)} {...props}>
-                <Icon className={size === "md" ? "size-4.5" : "size-4"} strokeWidth={1.75} />
+            <Button
+                aria-label={label}
+                variant={active ? "secondary" : "ghost"}
+                className={cn(
+                    "px-0",
+                    size === "md" ? "size-8" : "size-7",
+                    active && "border-accent/40 text-ink shadow-[inset_0_-2px_0_0_var(--accent)]",
+                    className,
+                )}
+                {...props}
+            >
+                <Icon className={size === "md" ? "size-4" : "size-3.5"} strokeWidth={1.75} />
             </Button>
         </Tooltip>
     );

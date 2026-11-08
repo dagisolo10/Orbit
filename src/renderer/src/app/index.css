@@ -3,95 +3,87 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* -------------------------------------------------------------------------
+ * Orbit visual system — "Console"
+ * Dark, technical, sharp-edged. Neutral surfaces carry the layout; a single
+ * red accent marks activity and primary intent. Data is set in mono.
+ * ---------------------------------------------------------------------- */
+
 @theme {
-    --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --font-sans: "Adwaita Sans", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrainsMono Nerd Font", "JetBrains Mono", "Adwaita Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 @theme inline {
-    --color-background: var(--background);
-    --color-foreground: var(--foreground);
-    --color-card: var(--card);
-    --color-card-foreground: var(--card-foreground);
-    --color-popover: var(--popover);
-    --color-popover-foreground: var(--popover-foreground);
-    --color-primary: var(--primary);
-    --color-primary-foreground: var(--primary-foreground);
-    --color-secondary: var(--secondary);
-    --color-secondary-foreground: var(--secondary-foreground);
-    --color-muted: var(--muted);
-    --color-muted-foreground: var(--muted-foreground);
+    /* Core surfaces */
+    --color-bg: var(--bg);
+
+    --color-panel: var(--panel);
+    --color-panel-inset: var(--panel-inset);
+    --color-panel-raised: var(--panel-raised);
+
+    --color-line: var(--line);
+    --color-line-soft: var(--line-soft);
+    --color-line-strong: var(--line-strong);
+
+    /* Type */
+    --color-ink: var(--ink);
+    --color-ink-soft: var(--ink-soft);
+    --color-ink-muted: var(--ink-muted);
+
+    /* Signal */
     --color-accent: var(--accent);
-    --color-accent-foreground: var(--accent-foreground);
-    --color-destructive: var(--destructive);
-    --color-destructive-foreground: var(--destructive-foreground);
-    --color-border: var(--border);
-    --color-input: var(--input);
-    --color-ring: var(--ring);
-    --color-chart-1: var(--chart-1);
-    --color-chart-2: var(--chart-2);
-    --color-chart-3: var(--chart-3);
-    --color-chart-4: var(--chart-4);
-    --color-chart-5: var(--chart-5);
-    --radius-sm: calc(var(--radius) * 0.5);
-    --radius-md: calc(var(--radius) * 0.75);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.35);
-    --radius-2xl: calc(var(--radius) * 1.75);
-    --radius-3xl: calc(var(--radius) * 2.1);
-    --radius-4xl: calc(var(--radius) * 2.5);
-    --color-sidebar: var(--sidebar);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-ring: var(--sidebar-ring);
+    --color-accent-ink: var(--accent-ink);
+    --color-accent-soft: var(--accent-soft);
+
+    --color-ok: var(--ok);
+    --color-warn: var(--warn);
+    --color-danger: var(--danger);
+
+    /* Sharp geometry only */
+    --radius-sm: 2px;
+    --radius-md: 3px;
+    --radius-lg: 4px;
+    --radius-xl: 5px;
+    --radius-2xl: 6px;
+    --radius-3xl: 8px;
+    --radius-4xl: 10px;
+
+    /* Motion */
+    --ease-orbit: cubic-bezier(0.2, 0.7, 0.2, 1);
+    --animate-rise: orbit-rise 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    --animate-sweep: orbit-sweep 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 :root,
 .dark {
     color-scheme: dark;
-    --radius: 0.7rem;
 
-    --background: oklch(0.145 0.007 285);
-    --foreground: oklch(0.955 0.003 285);
-    --card: oklch(0.178 0.008 285);
-    --card-foreground: oklch(0.955 0.003 285);
-    --popover: oklch(0.2 0.009 285);
-    --popover-foreground: oklch(0.965 0.003 285);
-    --primary: oklch(0.665 0.175 288);
-    --primary-foreground: oklch(0.99 0.004 285);
-    --secondary: oklch(0.235 0.009 285);
-    --secondary-foreground: oklch(0.94 0.004 285);
-    --muted: oklch(0.22 0.008 285);
-    --muted-foreground: oklch(0.665 0.014 285);
-    --accent: oklch(0.26 0.013 285);
-    --accent-foreground: oklch(0.96 0.003 285);
-    --destructive: oklch(0.63 0.215 25);
-    --destructive-foreground: oklch(0.99 0.004 285);
-    --border: oklch(1 0 0 / 8%);
-    --input: oklch(1 0 0 / 10%);
-    --ring: oklch(0.665 0.175 288 / 55%);
-    --chart-1: oklch(0.665 0.175 288);
-    --chart-2: oklch(0.696 0.17 162);
-    --chart-3: oklch(0.769 0.16 70);
-    --chart-4: oklch(0.627 0.23 304);
-    --chart-5: oklch(0.645 0.216 16);
-    --sidebar: oklch(0.122 0.007 285);
-    --sidebar-foreground: oklch(0.9 0.004 285);
-    --sidebar-primary: oklch(0.665 0.175 288);
-    --sidebar-primary-foreground: oklch(0.99 0.004 285);
-    --sidebar-accent: oklch(0.21 0.009 285);
-    --sidebar-accent-foreground: oklch(0.96 0.003 285);
-    --sidebar-border: oklch(1 0 0 / 7%);
-    --sidebar-ring: oklch(0.665 0.175 288 / 55%);
+    --bg: #090a0c;
+    --panel: #111316;
+    --panel-raised: #171a1e;
+    --panel-inset: #0d0f12;
+    --line: #292d32;
+    --line-soft: #1d2125;
+    --line-strong: #3a4047;
+
+    --ink: #f2f3f4;
+    --ink-soft: #a0a5ac;
+    --ink-muted: #666d76;
+
+    --accent: #f0444f;
+    --accent-ink: #0a0a0b;
+    --accent-soft: #782a30;
+    --ok: #79b89a;
+    --warn: #e6a94a;
+    --danger: #f0444f;
+
+    --radius: 0.25rem;
 }
 
 @layer base {
     * {
-        @apply border-border;
+        @apply border-line;
     }
 
     html,
@@ -101,24 +93,24 @@
     }
 
     body {
-        @apply bg-background text-foreground antialiased;
+        @apply bg-bg overflow-hidden m-0 text-ink antialiased;
         text-rendering: optimizeLegibility;
-        font-feature-settings: "cv11", "ss01";
-        overflow: hidden;
+        font-feature-settings: "ss01", "cv11";
     }
 
     ::selection {
-        background: oklch(0.665 0.175 288 / 30%);
+        background: color-mix(in srgb, var(--accent) 32%, transparent);
+        color: var(--ink);
     }
 
     * {
         scrollbar-width: thin;
-        scrollbar-color: oklch(1 0 0 / 12%) transparent;
+        scrollbar-color: var(--line-strong) transparent;
     }
 
     *::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
+        width: 9px;
+        height: 9px;
     }
 
     *::-webkit-scrollbar-track {
@@ -126,17 +118,83 @@
     }
 
     *::-webkit-scrollbar-thumb {
-        background-color: oklch(1 0 0 / 10%);
-        border: 3px solid transparent;
-        border-radius: 9999px;
+        background-color: var(--line);
+        border: 2px solid transparent;
+        border-radius: 0;
         background-clip: content-box;
     }
 
     *::-webkit-scrollbar-thumb:hover {
-        background-color: oklch(1 0 0 / 18%);
+        background-color: var(--line-strong);
     }
 
     :focus-visible {
-        outline: none;
+        outline: 1px solid var(--accent);
+        outline-offset: 2px;
+    }
+
+    button,
+    a,
+    input,
+    select,
+    textarea {
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+@layer utilities {
+    /* Small uppercase technical label. */
+    .label-mono {
+        @apply font-mono text-[10px] font-medium tracking-[0.18em] uppercase;
+    }
+
+    /* Very subtle dot matrix, used behind empty and console surfaces. */
+    .dot-grid {
+        background-image: radial-gradient(circle, color-mix(in srgb, var(--line) 70%, transparent) 1px, transparent 1px);
+        background-size: 16px 16px;
+        background-position: -1px -1px;
+    }
+
+    /* Hairline cross-hatch used for technical panels. */
+    .rule-grid {
+        background-image:
+            linear-gradient(to right, color-mix(in srgb, var(--line-soft) 80%, transparent) 1px, transparent 1px),
+            linear-gradient(to bottom, color-mix(in srgb, var(--line-soft) 80%, transparent) 1px, transparent 1px);
+        background-size: 56px 56px;
+    }
+
+    .text-balance {
+        text-wrap: balance;
+    }
+}
+
+@keyframes orbit-rise {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes orbit-sweep {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(400%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
     }
 }

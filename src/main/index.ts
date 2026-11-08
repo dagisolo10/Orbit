@@ -16,7 +16,7 @@ export function getMainWindow() {
 process.on("unhandledRejection", (reason) => dialog.showErrorBox("Unhandled Rejection", String(reason)));
 process.on("uncaughtException", (error) => dialog.showErrorBox("Main Process Error", error.stack || error.message));
 
-app.whenReady().then(async () => {
+void app.whenReady().then(async () => {
     electronApp.setAppUserModelId("com.orbit.app");
 
     app.on("browser-window-created", (_, window) => optimizer.watchWindowShortcuts(window));

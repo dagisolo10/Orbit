@@ -9,12 +9,13 @@ import { useServers } from "@/contexts/servers-context";
 import { useToast } from "@/contexts/toast-context";
 import { useProjectActions } from "@/hooks/use-project-actions";
 import { copyToClipboard } from "@/lib/clipboard";
-import { formatRelativeTime } from "@/lib/format";
+import { formatRelativeTime, shortenPath } from "@/lib/format";
 import { SERVER_STATUS_META, portFromUrl } from "@/lib/server-status";
 import { cn } from "@/lib/utils";
 import { openLocalUrl } from "@/services/servers";
+import { VIEW_META } from "@/types/navigation";
 import type { ServerLogLine, ServerProject, ServerRuntimeState } from "@shared/types/server";
-import { Check, Copy, ExternalLink, FileCode, Play, Plus, RefreshCw, RotateCw, Server, Square, SquarePen, Trash2, TriangleAlert } from "lucide-react";
+import { Check, Copy, ExternalLink, FileCode, GripVertical, Play, Plus, RefreshCw, RotateCw, Server, Square, SquarePen, Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 function stoppedState(id: string): ServerRuntimeState {
@@ -56,15 +57,28 @@ export function ServersView() {
         setFormOpen(true);
     };
 
+    const header = (
+        <ServersHeader
+            projectCount={projects.length}
+            runningCount={Object.values(states).filter((state) => state.status === "running" || state.status === "starting").length}
+            onAdd={openAdd}
+            onReload={reload}
+        />
+    );
+
     if (status === "loading") {
         return (
-            <div className="flex h-full flex-col">
-                <div className="flex items-center gap-2 border-b border-border px-6 py-2.5">
-                    <Skeleton className="h-7 w-28" />
-                    <Skeleton className="h-7 w-24" />
-                </div>
-                <div className="p-6">
-                    <Skeleton className="h-64 w-full" />
+            <div className="flex h-full min-h-0 flex-col">
+                {header}
+                <div className="flex min-h-0 flex-1">
+                    <div className="hidden w-70 shrink-0 space-y-2 border-r border-line p-3 lg:block">
+                        {Array.from({ length: 6 }).map((_, index) => (
+                            <Skeleton key={index} className="h-11 w-full" />
+                        ))}
+                    </div>
+                    <div className="flex-1 p-4">
+                        <Skeleton className="h-full min-h-64 w-full" />
+                    </div>
                 </div>
             </div>
         );
@@ -72,20 +86,22 @@ export function ServersView() {
 
     if (status === "error") {
         return (
-            <div className="flex h-full items-center justify-center p-6">
-                <div className="w-full max-w-lg rounded-2xl border border-white/8 bg-white/2 p-6">
-                    <div className="flex items-start gap-3">
-                        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-amber-300">
-                            <TriangleAlert className="size-5" strokeWidth={1.8} />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                            <h3 className="text-sm font-semibold text-foreground">{error?.message ?? "Orbit could not load your development servers."}</h3>
-                            {error?.detail ? <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{error.detail}</p> : null}
-                            <Button variant="secondary" size="sm" className="mt-4" onClick={reload}>
-                                <RefreshCw className="size-3.5" />
-                                Retry
-                            </Button>
-                        </div>
+            <div className="flex h-full min-h-0 flex-col">
+                {header}
+                <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-5 lg:p-8">
+                    <div className="w-full max-w-xl">
+                        <EmptyState
+                            icon={TriangleAlert}
+                            label="SERVERS OFFLINE"
+                            title={error?.message ?? "Orbit could not load your development servers."}
+                            description={error?.detail ?? "The main process did not return a server configuration."}
+                            action={
+                                <Button variant="secondary" size="sm" onClick={reload}>
+                                    <RefreshCw className="size-3.5" />
+                                    Retry
+                                </Button>
+                            }
+                        />
                     </div>
                 </div>
             </div>
@@ -96,66 +112,91 @@ export function ServersView() {
     const activeLogs: ServerLogLine[] = activeProject ? (logs[activeProject.id] ?? []) : [];
 
     return (
-        <div className="flex h-full flex-col">
-            <div className="flex items-center gap-2 border-b border-border px-6 py-2.5">
-                <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
-                    {projects.map((project) => (
-                        <ServerTab
-                            key={project.id}
-                            project={project}
-                            state={states[project.id] ?? stoppedState(project.id)}
-                            active={project.id === activeId}
-                            dragging={project.id === dragId}
-                            dragOver={project.id === dragOverId}
-                            onSelect={() => setActiveId(project.id)}
-                            onDragStart={() => setDragId(project.id)}
-                            onDragOver={() => {
-                                if (dragId && dragId !== project.id) setDragOverId(project.id);
-                            }}
-                            onDrop={() => dropOn(project.id)}
-                            onDragEnd={() => {
-                                setDragId(null);
-                                setDragOverId(null);
-                            }}
-                        />
-                    ))}
-                </div>
-                <Button variant="secondary" size="sm" className="shrink-0" onClick={openAdd}>
-                    <Plus className="size-3.5" strokeWidth={2} />
-                    Add project
-                </Button>
-            </div>
+        <div className="flex h-full min-h-0 flex-col">
+            {header}
 
             {projects.length === 0 ? (
-                <div className="p-6">
-                    <EmptyState
-                        icon={Server}
-                        title="No development servers yet"
-                        description="Bring your projects' dev servers into one place. Search your Orbit workspace for a project, set its startup command, and start it without leaving Orbit."
-                        action={
-                            <Button variant="primary" size="sm" onClick={openAdd}>
-                                <Plus className="size-3.5" strokeWidth={2} />
-                                Add your first project
-                            </Button>
-                        }
-                    />
+                <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-5 lg:p-8">
+                    <div className="w-full max-w-2xl">
+                        <EmptyState
+                            icon={Server}
+                            label="NO SERVERS"
+                            title="No development servers yet"
+                            description="Bring your projects' dev servers into one place. Search your Orbit workspace for a project, set its startup command, and start it without leaving Orbit."
+                            action={
+                                <Button variant="primary" size="sm" onClick={openAdd}>
+                                    <Plus className="size-3.5" strokeWidth={2} />
+                                    Add your first project
+                                </Button>
+                            }
+                        />
+                    </div>
                 </div>
-            ) : activeProject && activeState ? (
-                <ServerPanel
-                    project={activeProject}
-                    state={activeState}
-                    logs={activeLogs}
-                    busy={busyIds.includes(activeProject.id)}
-                    onStart={() => void start(activeProject.id)}
-                    onStop={() => void stop(activeProject.id)}
-                    onRestart={() => void restart(activeProject.id)}
-                    onEdit={() => openEdit(activeProject)}
-                    onRemove={() => setConfirmRemove(activeProject)}
-                    onClear={() => void clearLogs(activeProject.id)}
-                />
-            ) : null}
+            ) : (
+                <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+                    <aside className="flex max-h-52 min-h-0 w-full shrink-0 flex-col border-b border-line bg-panel lg:max-h-none lg:w-71.5 lg:border-r lg:border-b-0">
+                        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2">
+                            <span className="label-mono text-ink-muted">SERVER INDEX</span>
+                            <span className="font-mono text-[9px] tabular-nums text-ink-muted/70">{String(projects.length).padStart(2, "0")}</span>
+                        </div>
+                        <div className="min-h-0 flex-1 overflow-y-auto">
+                            {projects.map((project, index) => (
+                                <ServerIndexRow
+                                    key={project.id}
+                                    project={project}
+                                    index={index}
+                                    state={states[project.id] ?? stoppedState(project.id)}
+                                    active={project.id === activeId}
+                                    dragging={project.id === dragId}
+                                    dragOver={project.id === dragOverId}
+                                    onSelect={() => setActiveId(project.id)}
+                                    onDragStart={() => setDragId(project.id)}
+                                    onDragOver={() => {
+                                        if (dragId && dragId !== project.id) setDragOverId(project.id);
+                                    }}
+                                    onDrop={() => dropOn(project.id)}
+                                    onDragEnd={() => {
+                                        setDragId(null);
+                                        setDragOverId(null);
+                                    }}
+                                />
+                            ))}
+                        </div>
+                        <div className="hidden shrink-0 border-t border-line px-3 py-2 font-mono text-[9px] leading-relaxed tracking-[0.04em] text-ink-muted/70 lg:block">
+                            Drag rows to reorder the index.
+                        </div>
+                    </aside>
 
-            <ServerFormModal open={formOpen} project={editing} onClose={() => setFormOpen(false)} onSubmit={(draft) => (editing ? updateProject(editing.id, draft) : addProject(draft))} />
+                    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+                        {activeProject && activeState ? (
+                            <ServerPanel
+                                project={activeProject}
+                                state={activeState}
+                                logs={activeLogs}
+                                busy={busyIds.includes(activeProject.id)}
+                                onStart={() => void start(activeProject.id)}
+                                onStop={() => void stop(activeProject.id)}
+                                onRestart={() => void restart(activeProject.id)}
+                                onEdit={() => openEdit(activeProject)}
+                                onRemove={() => setConfirmRemove(activeProject)}
+                                onClear={() => void clearLogs(activeProject.id)}
+                            />
+                        ) : (
+                            <div className="flex min-h-0 flex-1 items-center justify-center p-5">
+                                <EmptyState icon={Server} label="NO SELECTION" title="Select a server" description="Choose a project from the server index to inspect its runtime and output." />
+                            </div>
+                        )}
+                    </section>
+                </div>
+            )}
+
+            <ServerFormModal
+                open={formOpen}
+                project={editing}
+                onClose={() => setFormOpen(false)}
+                key={`${editing?.path}-${formOpen}`}
+                onSubmit={(draft) => (editing ? updateProject(editing.id, draft) : addProject(draft))}
+            />
 
             <RemoveProjectModal
                 project={confirmRemove}
@@ -170,8 +211,44 @@ export function ServersView() {
     );
 }
 
-function ServerTab({
+function ServersHeader({ projectCount, runningCount, onAdd, onReload }: { projectCount: number; runningCount: number; onAdd: () => void; onReload: () => void }) {
+    const meta = VIEW_META.servers;
+
+    return (
+        <div className="shrink-0 border-b border-line px-5 py-4 lg:px-8">
+            <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+                <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="label-mono text-ink-muted">
+                            <span className="text-accent">●</span> ORBIT / {meta.section}
+                        </span>
+                        <span className="rounded-[1px] border border-line px-1 py-px font-mono text-[9px] tracking-[0.14em] text-ink-muted">{meta.index}</span>
+                    </div>
+                    <h1 className="mt-1.5 text-[22px] leading-tight font-semibold tracking-[-0.02em] text-ink">{meta.title}</h1>
+                    <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-ink-soft">{meta.subtitle}</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex h-7 items-center gap-2 rounded-[2px] border border-line bg-panel px-2 font-mono text-[9px] tracking-[0.08em] text-ink-muted uppercase">
+                        ACTIVE
+                        <span className={cn("tabular-nums", runningCount > 0 ? "text-ok" : "text-ink-soft")}>
+                            {String(runningCount).padStart(2, "0")}/{String(projectCount).padStart(2, "0")}
+                        </span>
+                    </span>
+                    <IconButton icon={RefreshCw} label="Reload servers" size="sm" side="bottom" onClick={onReload} />
+                    <Button variant="primary" size="sm" onClick={onAdd}>
+                        <Plus className="size-3.5" strokeWidth={2} />
+                        Add project
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ServerIndexRow({
     project,
+    index,
     state,
     active,
     dragging,
@@ -183,6 +260,7 @@ function ServerTab({
     onDragEnd,
 }: {
     project: ServerProject;
+    index: number;
     state: ServerRuntimeState;
     active: boolean;
     dragging: boolean;
@@ -217,16 +295,23 @@ function ServerTab({
             }}
             onDragEnd={onDragEnd}
             title={project.name}
+            aria-current={active ? "true" : undefined}
             className={cn(
-                "flex max-w-52 shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-                active ? "bg-white/8 text-foreground" : "text-muted-foreground hover:bg-white/4 hover:text-foreground",
+                "group flex w-full items-center gap-2 border-b border-line-soft px-3 py-2.5 text-left outline-none transition-colors focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset",
+                active ? "bg-panel-raised shadow-[inset_2px_0_0_0_var(--accent)]" : "hover:bg-white/2",
                 dragging && "opacity-40",
-                dragOver && !dragging && "ring-2 ring-primary/60",
+                dragOver && !dragging && "bg-accent/6",
             )}
         >
-            <span className={cn("size-1.5 shrink-0 rounded-full", meta.dot)} />
-            <span className="truncate">{project.name}</span>
-            {port ? <span className="shrink-0 text-[10px] text-muted-foreground/70 tabular-nums">:{port}</span> : null}
+            <GripVertical className="size-3 shrink-0 cursor-grab text-ink-muted/40 group-hover:text-ink-muted" strokeWidth={1.8} />
+            <span aria-hidden className={cn("size-1.5 shrink-0 rounded-[1px]", meta.dot)} />
+            <span className="min-w-0 flex-1">
+                <span className="block truncate text-[12px] font-medium text-ink">{project.name}</span>
+                <span className="block truncate font-mono text-[9px] text-ink-muted" title={project.path}>
+                    {port ? `localhost:${port}` : meta.label.toLowerCase()}
+                </span>
+            </span>
+            <span className="shrink-0 font-mono text-[9px] tabular-nums text-ink-muted/50">{String(index + 1).padStart(2, "0")}</span>
         </button>
     );
 }
@@ -281,21 +366,21 @@ function ServerPanel({
     };
 
     return (
-        <div className="flex min-h-0 flex-1 flex-col p-6">
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/8 bg-card">
-                <div className="flex flex-wrap items-center gap-3 border-b border-white/6 px-4 py-3">
-                    <span className={cn("size-2 shrink-0 rounded-full", meta.dot)} />
+        <div className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 border-b border-line bg-panel px-4 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                        <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                            <span className="truncate">{project.name}</span>
-                            <span className={cn("text-[11px] font-medium", meta.text)}>{meta.label}</span>
-                        </p>
-                        <p className="truncate font-mono text-[11px] text-muted-foreground" title={project.path}>
-                            {project.path}
+                        <div className="flex min-w-0 items-center gap-2">
+                            <span aria-hidden className={cn("size-2 shrink-0 rounded-[1px]", meta.dot)} />
+                            <h2 className="truncate text-[14px] font-semibold tracking-tight text-ink">{project.name}</h2>
+                            <span className={cn("shrink-0 font-mono text-[9px] tracking-[0.12em] uppercase", meta.text)}>{meta.label}</span>
+                        </div>
+                        <p className="mt-1 truncate font-mono text-[9.5px] text-ink-muted" title={project.path}>
+                            {shortenPath(project.path, 64)}
                         </p>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                         {isStopped ? (
                             <Button variant="primary" size="sm" onClick={onStart} disabled={busy}>
                                 <Play className="size-3.5" strokeWidth={2} />
@@ -314,6 +399,7 @@ function ServerPanel({
                                 Restart
                             </Button>
                         ) : null}
+                        <span aria-hidden className="mx-1 hidden h-5 w-px bg-line sm:block" />
                         <IconButton icon={FileCode} label="Open in editor" size="sm" side="bottom" onClick={() => void openPath(project.path, "editor", project.name)} />
                         <IconButton
                             icon={copiedPath ? Check : Copy}
@@ -321,54 +407,64 @@ function ServerPanel({
                             size="sm"
                             side="bottom"
                             onClick={copyPath}
-                            className={copiedPath ? "text-emerald-400 hover:text-emerald-400" : undefined}
+                            className={copiedPath ? "text-ok hover:text-ok" : undefined}
                         />
                         <IconButton icon={SquarePen} label="Edit project" size="sm" side="bottom" onClick={onEdit} />
                         <IconButton icon={Trash2} label="Remove project" size="sm" side="bottom" onClick={onRemove} />
                     </div>
                 </div>
+            </div>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/6 px-4 py-2.5">
-                    <span className="font-mono text-[11px] text-muted-foreground">$ {project.command}</span>
+            <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-line bg-panel-inset px-4 py-2">
+                <span className="min-w-0 truncate font-mono text-[10px] text-ink-soft" title={project.command}>
+                    <span className="text-ink-muted/60">$</span> {project.command}
+                </span>
 
-                    {state.urls.length > 0 ? (
-                        <div className="flex flex-wrap items-center gap-1.5">
-                            {state.urls.map((url) => (
-                                <button
-                                    key={url}
-                                    type="button"
-                                    onClick={() => void openUrl(url)}
-                                    className="inline-flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 px-2 py-0.5 font-mono text-[11px] text-primary transition-colors hover:bg-primary/20"
-                                >
-                                    {url}
-                                    <ExternalLink className="size-3" strokeWidth={2} />
-                                </button>
-                            ))}
-                        </div>
-                    ) : null}
-
-                    <div className="ml-auto flex items-center gap-3 text-[11px] text-muted-foreground/80">
-                        {state.pid && state.status === "running" ? <span className="tabular-nums">PID {state.pid}</span> : null}
-                        {state.startedAt && state.status === "running" ? <span>Started {formatRelativeTime(state.startedAt)}</span> : null}
-                    </div>
-                </div>
-
-                {state.error ? (
-                    <div className="flex items-start gap-2.5 border-b border-red-400/15 bg-red-400/6 px-4 py-2.5">
-                        <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-red-300" strokeWidth={1.9} />
-                        <p className="text-xs leading-relaxed text-red-200/90">{state.error}</p>
+                {state.urls.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        {state.urls.map((url) => (
+                            <button
+                                key={url}
+                                type="button"
+                                onClick={() => void openUrl(url)}
+                                className="inline-flex items-center gap-1.5 rounded-[1px] border border-accent/30 bg-accent/8 px-2 py-0.5 font-mono text-[10px] text-accent outline-none transition-colors hover:border-accent/60 hover:bg-accent/[0.14] focus-visible:ring-1 focus-visible:ring-accent"
+                            >
+                                {url}
+                                <ExternalLink className="size-2.5" strokeWidth={2} />
+                            </button>
+                        ))}
                     </div>
                 ) : null}
 
-                <div className="flex items-center justify-between border-b border-white/6 px-4 py-2">
-                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">Terminal</span>
-                    <button type="button" onClick={onClear} disabled={logs.length === 0} className="text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40">
-                        Clear
-                    </button>
+                <div className="ml-auto flex shrink-0 items-center gap-3 font-mono text-[9px] tracking-[0.06em] text-ink-muted uppercase">
+                    {state.pid && state.status === "running" ? <span className="tabular-nums">PID {state.pid}</span> : null}
+                    {state.startedAt && state.status === "running" ? <span>Started {formatRelativeTime(state.startedAt)}</span> : null}
                 </div>
-
-                <ServerTerminal key={project.id} lines={logs} emptyHint={isStopped ? "Start this server to see its output here." : "Waiting for output…"} />
             </div>
+
+            {state.error ? (
+                <div className="flex shrink-0 items-start gap-2.5 border-b border-danger/25 bg-danger/6 px-4 py-2.5">
+                    <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-danger" strokeWidth={1.9} />
+                    <p className="text-[11px] leading-relaxed text-danger/90">{state.error}</p>
+                </div>
+            ) : null}
+
+            <div className="flex shrink-0 items-center justify-between border-b border-line bg-panel px-4 py-1.5">
+                <span className="flex items-center gap-2 font-mono text-[9px] tracking-[0.12em] text-ink-muted uppercase">
+                    OUTPUT
+                    <span className="tabular-nums text-ink-muted/60">{String(logs.length).padStart(3, "0")}</span>
+                </span>
+                <button
+                    type="button"
+                    onClick={onClear}
+                    disabled={logs.length === 0}
+                    className="font-mono text-[9px] tracking-[0.08em] text-ink-muted uppercase outline-none transition-colors hover:text-ink focus-visible:ring-1 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-40"
+                >
+                    Clear
+                </button>
+            </div>
+
+            <ServerTerminal key={project.id} lines={logs} emptyHint={isStopped ? "Start this server to see its output here." : "Waiting for output…"} />
         </div>
     );
 }
@@ -400,9 +496,12 @@ function RemoveProjectModal({ project, onClose, onConfirm }: { project: ServerPr
                 </>
             }
         >
-            <p className="text-[13px] leading-relaxed text-muted-foreground">
-                Orbit will stop this server if it is running and remove it from this list. The project folder and its files are left untouched.
-            </p>
+            <div className="flex items-start gap-2.5 border border-danger/25 bg-danger/6 px-3 py-2.5">
+                <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-danger" strokeWidth={1.9} />
+                <p className="text-[12px] leading-relaxed text-ink-soft">
+                    Orbit will stop this server if it is running and remove it from this list. The project folder and its files are left untouched.
+                </p>
+            </div>
         </Modal>
     );
 }

@@ -1,26 +1,22 @@
 import { ScanErrorBanner, ScannerOfflineState } from "@/components/common/scanner-offline-state";
+import { DataBar } from "@/components/ui/data-bar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { SearchField } from "@/components/ui/search-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TechIcon } from "@/components/ui/tech-icon";
 import { useOrbit } from "@/contexts/orbit-context";
+import { useViewSearch } from "@/hooks/use-view-search";
 import { pluralize } from "@/lib/format";
 import { CATEGORY_ORDER, getCategoryMeta, getTechLabel } from "@/lib/tech";
-import { cn } from "@/lib/utils";
+import { VIEW_META } from "@/types/navigation";
 import type { Technology, TechnologyCategory } from "@/types/project";
-import { Braces, Database, Layers, LayoutPanelLeft, Palette, SearchX, Server, Wrench, type LucideIcon } from "lucide-react";
+import { ChevronRight, Layers, SearchX } from "lucide-react";
 import { useMemo } from "react";
 
-const CATEGORY_ICONS: Record<TechnologyCategory, LucideIcon> = {
-    language: Braces,
-    frontend: LayoutPanelLeft,
-    backend: Server,
-    styling: Palette,
-    "database-orm": Database,
-    tools: Wrench,
-};
-
 export function TechnologiesView({ onSelectTech, onSelectCategory }: { onSelectTech: (technology: Technology) => void; onSelectCategory: (category: TechnologyCategory) => void }) {
-    const { status, error, reload, reScan, dismissError, technologies, projects, query } = useOrbit();
+    const { status, error, reload, reScan, dismissError, technologies, projects } = useOrbit();
+    const { query, setQuery, inputRef: searchRef } = useViewSearch("technologies");
     const maxCount = technologies[0]?.count ?? 1;
 
     const filtered = useMemo(() => {
@@ -38,75 +34,121 @@ export function TechnologiesView({ onSelectTech, onSelectCategory }: { onSelectT
         [filtered],
     );
 
-    if (status === "loading") return <TechSkeleton />;
-    if (status === "error" && error) return <ScannerOfflineState error={error} onRetry={reload} />;
+    const categoryCount = useMemo(() => new Set(technologies.map((item) => item.category)).size, [technologies]);
+    const meta = VIEW_META.technologies;
+
+    const header = (
+        <PageHeader
+            section={meta.section}
+            index={meta.index}
+            title={meta.title}
+            description={meta.subtitle}
+            actions={
+                <SearchField
+                    inputRef={searchRef}
+                    value={query}
+                    onChange={setQuery}
+                    placeholder="Search technologies…"
+                    ariaLabel="Search technologies"
+                />
+            }
+        />
+    );
+
+    if (status === "loading") {
+        return (
+            <div className="space-y-5">
+                {header}
+                <TechSkeleton />
+            </div>
+        );
+    }
+
+    if (status === "error" && error) {
+        return (
+            <div className="space-y-5">
+                {header}
+                <ScannerOfflineState error={error} onRetry={reload} />
+            </div>
+        );
+    }
 
     if (technologies.length === 0) {
         return (
-            <EmptyState
-                icon={Layers}
-                title="No technologies detected"
-                description="Orbit reads dependencies from each project's package.json. Once projects are available, the technologies you work with will be grouped by category here."
-            />
+            <div className="space-y-5">
+                {header}
+                <EmptyState
+                    icon={Layers}
+                    label="STACK EMPTY"
+                    title="No technologies detected"
+                    description="Orbit reads dependencies from each project's package.json. Once projects are available, the technologies you work with will be grouped by category here."
+                />
+            </div>
         );
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
+            {header}
+
             {error ? <ScanErrorBanner error={error} onRetry={reScan} onDismiss={dismissError} /> : null}
 
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <p className="text-[13px] text-muted-foreground">
-                    <span className="font-medium text-foreground">{technologies.length}</span> technologies across{" "}
-                    <span className="font-medium text-foreground">{pluralize(projects.length, "project")}</span>
-                </p>
-                {query.trim() ? <span className="text-xs text-muted-foreground">Filtered by “{query.trim()}”</span> : null}
-                <span className="ml-auto text-xs text-muted-foreground">Detected from package.json dependencies</span>
+            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-[2px] border border-line bg-line">
+                <Readout label="TECHNOLOGIES" value={technologies.length} hint="Detected packages" />
+                <Readout label="CATEGORIES" value={categoryCount} hint="Distinct roles" />
+                <Readout label="PROJECTS" value={projects.length} hint="Source manifests" />
             </div>
 
             {groups.length === 0 ? (
-                <EmptyState icon={SearchX} title="No matching technologies" description={`No detected technology matches “${query.trim()}”.`} />
+                <EmptyState icon={SearchX} label="NO MATCH" title="No matching technologies" description={`No detected technology matches “${query.trim()}”.`} />
             ) : (
                 groups.map((group) => {
-                    const meta = getCategoryMeta(group.category);
-                    const Icon = CATEGORY_ICONS[group.category];
+                    const category = getCategoryMeta(group.category);
                     return (
-                        <section key={group.category} className="space-y-3">
-                            <div className="flex items-center gap-2.5">
-                                <span className={cn("flex size-6 items-center justify-center rounded-md ring-1 ring-inset", meta.className)}>
-                                    <Icon className="size-3.5" />
-                                </span>
-                                <h3 className="text-sm font-semibold text-foreground">{meta.label}</h3>
-                                <span className="text-xs tabular-nums text-muted-foreground">{group.items.length}</span>
+                        <section key={group.category} className="overflow-hidden rounded-[2px] border border-line bg-panel">
+                            <div className="flex items-center justify-between gap-3 border-b border-line px-3 py-2">
+                                <div className="flex min-w-0 items-center gap-2">
+                                    <h3 className="truncate text-[12px] font-medium text-ink">{category.label}</h3>
+                                    <span className="font-mono text-[9px] tracking-[0.12em] text-ink-muted/70">{category.short}</span>
+                                    <span className="font-mono text-[9px] tabular-nums text-ink-muted/60">{String(group.items.length).padStart(2, "0")}</span>
+                                </div>
                                 <button
                                     type="button"
                                     onClick={() => onSelectCategory(group.category)}
-                                    className="ml-auto text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                                    className="inline-flex shrink-0 items-center gap-1 font-mono text-[9px] tracking-[0.08em] text-ink-muted uppercase outline-none transition-colors hover:text-ink focus-visible:ring-1 focus-visible:ring-accent"
                                 >
                                     Filter projects
+                                    <ChevronRight className="size-3" />
                                 </button>
                             </div>
 
-                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            <div className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-3">
                                 {group.items.map((item) => (
                                     <button
                                         key={item.name}
                                         type="button"
                                         onClick={() => onSelectTech(item)}
-                                        className="group flex flex-col gap-3 rounded-xl border border-white/8 bg-card p-4 text-left outline-none transition-all hover:border-white/14 hover:bg-white/[0.035] focus-visible:ring-2 focus-visible:ring-ring"
+                                        className="group flex flex-col gap-2.5 bg-panel p-3 text-left outline-none transition-colors hover:bg-panel-raised focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/8 bg-white/3">
-                                                <TechIcon name={item.name} className="size-5" />
+                                        <span className="flex min-w-0 items-center gap-2.5">
+                                            <span className="flex size-7 shrink-0 items-center justify-center rounded-[1px] border border-line bg-panel-inset">
+                                                <TechIcon name={item.name} className="size-4" />
                                             </span>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="truncate text-[13px] font-medium text-foreground">{getTechLabel(item.name)}</p>
-                                                <p className="text-[11px] tabular-nums text-muted-foreground">{pluralize(item.count, "project")}</p>
-                                            </div>
-                                        </div>
-                                        <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
-                                            <div className="h-full rounded-full bg-primary/60" style={{ width: `${Math.max(8, Math.round((item.count / maxCount) * 100))}%` }} />
-                                        </div>
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-[12px] font-medium text-ink">{getTechLabel(item.name)}</span>
+                                                <span className="block truncate font-mono text-[9px] text-ink-muted" title={item.name}>
+                                                    {item.name}
+                                                </span>
+                                            </span>
+                                            <span className="shrink-0 font-mono text-[10px] tabular-nums text-ink-soft">{String(item.count).padStart(2, "0")}</span>
+                                        </span>
+
+                                        <DataBar value={item.count / maxCount} segments={20} />
+
+                                        <span className="flex items-center justify-between font-mono text-[9px] tracking-[0.06em] text-ink-muted uppercase">
+                                            <span>{pluralize(item.count, "project")}</span>
+                                            <span className="text-ink-muted/50">{category.short}</span>
+                                        </span>
                                     </button>
                                 ))}
                             </div>
@@ -118,15 +160,43 @@ export function TechnologiesView({ onSelectTech, onSelectCategory }: { onSelectT
     );
 }
 
+function Readout({ label, value, hint }: { label: string; value: number; hint: string }) {
+    return (
+        <div className="min-w-0 bg-panel px-4 py-3">
+            <p className="label-mono text-ink-muted">{label}</p>
+            <p className="mt-1.5 font-mono text-[22px] leading-none tracking-tight text-ink tabular-nums">{String(value).padStart(2, "0")}</p>
+            <p className="mt-1.5 truncate font-mono text-[9px] text-ink-muted">{hint}</p>
+        </div>
+    );
+}
+
 function TechSkeleton() {
     return (
-        <div className="space-y-5">
-            <Skeleton className="h-4 w-56" />
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {Array.from({ length: 8 }).map((_, index) => (
-                    <Skeleton key={index} className="h-24" />
+        <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-px overflow-hidden rounded-[2px] border border-line bg-line">
+                {Array.from({ length: 3 }).map((_, index) => (
+                    <div key={index} className="bg-panel px-4 py-3">
+                        <Skeleton className="h-2.5 w-20" />
+                        <Skeleton className="mt-2 h-6 w-10" />
+                        <Skeleton className="mt-2 h-2.5 w-24" />
+                    </div>
                 ))}
             </div>
+            {Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="overflow-hidden rounded-[2px] border border-line bg-panel">
+                    <div className="border-b border-line px-3 py-2">
+                        <Skeleton className="h-3 w-32" />
+                    </div>
+                    <div className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-3">
+                        {Array.from({ length: 3 }).map((_, cellIndex) => (
+                            <div key={cellIndex} className="bg-panel p-3">
+                                <Skeleton className="h-7 w-full" />
+                                <Skeleton className="mt-3 h-1.5 w-full" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }

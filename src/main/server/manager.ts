@@ -21,6 +21,7 @@ const STOP_GRACE_MS = 5000;
 // Strips ANSI colour/control sequences so terminal output stays readable.
 // eslint-disable-next-line no-control-regex
 const ANSI_PATTERN = /[\u001B\u009B][[\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d/#&.:=?%@~_]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g;
+// eslint-disable-next-line no-control-regex
 const CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
 // Local dev URLs only: localhost, loopback, and private network addresses.

@@ -8,7 +8,13 @@ export function TechIcon({ name, className }: { name: string; className?: string
 
     if (!icon) {
         return (
-            <span aria-hidden className={cn("inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-white/10 text-[9px] leading-none font-semibold text-muted-foreground", className)}>
+            <span
+                aria-hidden
+                className={cn(
+                    "inline-flex size-4 shrink-0 items-center justify-center rounded-[2px] border border-line bg-panel-inset font-mono text-[8px] leading-none font-semibold text-ink-muted",
+                    className,
+                )}
+            >
                 {getTechLabel(name).charAt(0).toUpperCase()}
             </span>
         );

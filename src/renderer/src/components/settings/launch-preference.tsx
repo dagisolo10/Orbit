@@ -12,6 +12,7 @@ const SOURCE_LABEL: Record<LaunchAppOption["source"], string> = {
     snap: "Snap",
 };
 
+// eslint-disable-next-line react-refresh/only-export-components -- Shared label helper is intentionally co-located with the setting.
 export function preferenceLabel(preference: LaunchPreference, options: LaunchAppOption[]): string {
     if (preference.mode === "auto") return "Auto-detect";
     if (preference.mode === "preset") return options.find((option) => option.id === preference.id)?.label ?? preference.id;
@@ -92,7 +93,7 @@ export function LaunchPreferenceSetting({
                 }
             />
             {editing ? (
-                <div className="px-4 py-3">
+                <div className="py-3">
                     <div className="flex items-center gap-2">
                         <input
                             value={draft}
@@ -104,7 +105,7 @@ export function LaunchPreferenceSetting({
                             placeholder={kind === "editor" ? "code --wait" : "kitty --directory"}
                             spellCheck={false}
                             autoFocus
-                            className="h-9 w-full rounded-lg border border-white/8 bg-white/3 px-3 font-mono text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/40 focus:bg-white/5 focus:ring-2 focus:ring-ring/40"
+                            className="h-8 w-full rounded-[2px] border border-line bg-panel-inset px-2.5 font-mono text-[11px] text-ink outline-none transition-colors placeholder:text-ink-muted/70 hover:border-line-strong focus:border-accent/70 focus:bg-panel focus:ring-1 focus:ring-accent/30"
                         />
                         <Button size="sm" variant="primary" onClick={() => void submitCustom()} disabled={saving || draft.trim().length === 0}>
                             <Check className="size-3.5" strokeWidth={2.2} />
@@ -114,7 +115,7 @@ export function LaunchPreferenceSetting({
                             Cancel
                         </Button>
                     </div>
-                    <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                    <p className="mt-1.5 font-mono text-[9px] leading-relaxed text-ink-muted">
                         {kind === "editor" ? "Orbit appends the project path as the final argument." : "Orbit runs this command with the project folder as the working directory."} The command is
                         spawned directly — never through a shell.
                     </p>

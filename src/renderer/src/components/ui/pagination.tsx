@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -6,20 +5,25 @@ export function Pagination({ page, pageCount, onPageChange, className }: { page:
     if (pageCount <= 1) return null;
 
     return (
-        <div className={cn("flex flex-wrap items-center justify-between gap-3", className)}>
-            <p className="text-xs text-muted-foreground">
-                Page <span className="font-medium text-foreground">{page}</span> of {pageCount}
+        <div className={cn("flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3", className)}>
+            <p className="label-mono text-ink-muted">
+                PAGE <span className="text-ink">{String(page).padStart(2, "0")}</span> / {String(pageCount).padStart(2, "0")}
             </p>
 
             <div className="flex items-center gap-1">
-                <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+                <button
+                    type="button"
+                    aria-label="Previous page"
+                    disabled={page <= 1}
+                    onClick={() => onPageChange(page - 1)}
+                    className="inline-flex size-7 items-center justify-center rounded-[2px] border border-line bg-panel text-ink-soft outline-none transition-colors hover:border-line-strong hover:text-ink focus-visible:ring-1 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-30"
+                >
                     <ChevronLeft className="size-3.5" />
-                    <span className="hidden sm:inline">Previous</span>
-                </Button>
+                </button>
 
                 {getPageItems(page, pageCount).map((item, index) =>
                     item === "ellipsis" ? (
-                        <span key={`ellipsis-${index}`} className="px-1.5 text-xs text-muted-foreground" aria-hidden>
+                        <span key={`ellipsis-${index}`} className="px-1 font-mono text-[10px] text-ink-muted" aria-hidden>
                             …
                         </span>
                     ) : (
@@ -30,19 +34,24 @@ export function Pagination({ page, pageCount, onPageChange, className }: { page:
                             aria-current={item === page ? "page" : undefined}
                             aria-label={`Page ${item}`}
                             className={cn(
-                                "inline-flex size-8 items-center justify-center rounded-lg text-xs font-medium tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-                                item === page ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-white/8 hover:text-foreground",
+                                "inline-flex size-7 items-center justify-center rounded-[2px] border font-mono text-[10px] font-medium tabular-nums outline-none transition-colors focus-visible:ring-1 focus-visible:ring-accent",
+                                item === page ? "border-accent bg-accent text-(--accent-ink)" : "border-line bg-panel text-ink-muted hover:border-line-strong hover:text-ink",
                             )}
                         >
-                            {item}
+                            {String(item).padStart(2, "0")}
                         </button>
                     ),
                 )}
 
-                <Button variant="secondary" size="sm" disabled={page >= pageCount} onClick={() => onPageChange(page + 1)}>
-                    <span className="hidden sm:inline">Next</span>
+                <button
+                    type="button"
+                    aria-label="Next page"
+                    disabled={page >= pageCount}
+                    onClick={() => onPageChange(page + 1)}
+                    className="inline-flex size-7 items-center justify-center rounded-[2px] border border-line bg-panel text-ink-soft outline-none transition-colors hover:border-line-strong hover:text-ink focus-visible:ring-1 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-30"
+                >
                     <ChevronRight className="size-3.5" />
-                </Button>
+                </button>
             </div>
         </div>
     );

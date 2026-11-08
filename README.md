@@ -157,6 +157,8 @@ Each configured server shows its live state — **starting**, **running**, **sto
 - Open any detected **localhost URL** in your browser with one click.
 - Follow the built-in terminal, which streams the process's `stdout`, `stderr`, and system messages, and **Clear** the buffer when you want a fresh view.
 
+Drag a server tab to reorder your list; the order is saved and restored on the next launch.
+
 Stopping a server tears down the whole process tree, so child processes a dev server spawns are cleaned up too. Just like the project launcher, commands are tokenized in the main process and spawned with `shell: false` — never interpreted as shell syntax. Recent output is capped per server so memory stays bounded, and an unexpected exit is reported with its code instead of failing silently.
 
 ## Tech stack

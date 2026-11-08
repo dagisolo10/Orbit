@@ -9,12 +9,12 @@ import { copyToClipboard } from "@/lib/clipboard";
 import { shortenPath } from "@/lib/format";
 import type { Project, ProjectOpenTarget, Technology } from "@/types/project";
 import { Check, ChevronRight, Copy, FileCode, FolderOpen, SquareTerminal, Star, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
-const OPEN_ACTIONS: { target: ProjectOpenTarget; icon: LucideIcon; label: string }[] = [
-    { target: "editor", icon: FileCode, label: "Open in editor" },
-    { target: "terminal", icon: SquareTerminal, label: "Open in terminal" },
-    { target: "file-manager", icon: FolderOpen, label: "Reveal in file manager" },
+const OPEN_ACTIONS: { target: ProjectOpenTarget; icon: LucideIcon; label: string; hint: string }[] = [
+    { target: "editor", icon: FileCode, label: "Open in editor", hint: "Preferred code editor" },
+    { target: "terminal", icon: SquareTerminal, label: "Open in terminal", hint: "Preferred terminal" },
+    { target: "file-manager", icon: FolderOpen, label: "Reveal in file manager", hint: "System default" },
 ];
 
 export function ProjectDetails({ project, onClose, onSelectTech }: { project: Project | null; onClose: () => void; onSelectTech: (technology: Technology) => void }) {
@@ -54,25 +54,25 @@ export function ProjectDetails({ project, onClose, onSelectTech }: { project: Pr
                         {favorite ? "Remove favorite" : "Add to favorites"}
                     </Button>
                     <Button variant="secondary" size="sm" onClick={handleCopy}>
-                        {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+                        {copied ? <Check className="size-3.5 text-ok" /> : <Copy className="size-3.5" />}
                         {copied ? "Copied" : "Copy path"}
                     </Button>
                 </>
             }
         >
             <div className="space-y-5">
-                <div className="flex items-center gap-3">
+                <div className="flex items-start gap-3 border border-line bg-panel-inset p-3">
                     <Monogram name={name} size="lg" />
-                    <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-foreground">{name}</p>
-                        <p className="truncate font-mono text-[11px] text-muted-foreground" title={project.path}>
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-semibold text-ink">{name}</p>
+                        <p className="mt-1 truncate font-mono text-[10px] text-ink-muted" title={project.path}>
                             {shortenPath(project.path, 64)}
                         </p>
                     </div>
+                    <span className="shrink-0 border border-line px-1.5 py-0.5 font-mono text-[9px] tracking-[0.12em] text-ink-muted uppercase">LOCAL</span>
                 </div>
 
-                <div>
-                    <p className="mb-2 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">Technologies</p>
+                <DetailSection label="DETECTED STACK" meta={String(project.technologies.length).padStart(2, "0")}>
                     {project.technologies.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                             {project.technologies.map((tech) => (
@@ -80,28 +80,43 @@ export function ProjectDetails({ project, onClose, onSelectTech }: { project: Pr
                             ))}
                         </div>
                     ) : (
-                        <p className="text-[13px] text-muted-foreground">No technologies were detected in this project.</p>
+                        <p className="font-mono text-[10px] text-ink-muted">No technologies were detected in this project.</p>
                     )}
-                </div>
+                </DetailSection>
 
-                <div>
-                    <p className="mb-2 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">Open with</p>
-                    <div className="space-y-1.5">
-                        {OPEN_ACTIONS.map((action) => (
+                <DetailSection label="LAUNCH TARGETS" meta="03">
+                    <div className="divide-y divide-line-soft border-y border-line">
+                        {OPEN_ACTIONS.map((action, index) => (
                             <button
                                 key={action.target}
                                 type="button"
                                 onClick={() => void open(project, action.target)}
-                                className="flex w-full items-center gap-2.5 rounded-lg border border-white/6 bg-white/2 px-3 py-2 text-[13px] text-foreground/90 outline-none transition-colors hover:border-white/14 hover:bg-white/5 focus-visible:ring-2 focus-visible:ring-ring"
+                                className="group flex w-full items-center gap-3 px-1 py-2.5 text-left outline-none transition-colors hover:bg-white/2.5 focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset"
                             >
-                                <action.icon className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-                                <span className="flex-1 text-left">{action.label}</span>
-                                <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" />
+                                <span className="font-mono text-[9px] tabular-nums text-ink-muted/70">{String(index + 1).padStart(2, "0")}</span>
+                                <action.icon className="size-3.5 shrink-0 text-ink-muted" strokeWidth={1.75} />
+                                <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-[12px] font-medium text-ink">{action.label}</span>
+                                    <span className="block truncate font-mono text-[9px] text-ink-muted">{action.hint}</span>
+                                </span>
+                                <ChevronRight className="size-3.5 shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5 group-hover:text-ink" />
                             </button>
                         ))}
                     </div>
-                </div>
+                </DetailSection>
             </div>
         </Modal>
+    );
+}
+
+function DetailSection({ label, meta, children }: { label: string; meta: string; children: ReactNode }) {
+    return (
+        <section>
+            <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="label-mono text-ink-muted">{label}</p>
+                <span className="font-mono text-[9px] tabular-nums text-ink-muted/60">{meta}</span>
+            </div>
+            {children}
+        </section>
     );
 }

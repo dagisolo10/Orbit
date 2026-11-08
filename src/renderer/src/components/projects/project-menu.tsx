@@ -4,6 +4,7 @@ import { useOrbit } from "@/contexts/orbit-context";
 import { useToast } from "@/contexts/toast-context";
 import { useProjectActions } from "@/hooks/use-project-actions";
 import { copyToClipboard } from "@/lib/clipboard";
+import { shortenPath } from "@/lib/format";
 import type { Project } from "@/types/project";
 import { Copy, EllipsisVertical, FileCode, FolderOpen, Info, SquareTerminal, Star } from "lucide-react";
 
@@ -30,5 +31,20 @@ export function ProjectMenu({ project, onOpenDetails }: { project: Project; onOp
         { id: "favorite", label: favorite ? "Remove from favorites" : "Add to favorites", icon: Star, onSelect: () => toggleFavorite(project.path) },
     ];
 
-    return <Dropdown items={items} label="Project actions" align="end" renderTrigger={(props) => <IconButton icon={EllipsisVertical} label="Project actions" size="sm" {...props} />} />;
+    return (
+        <Dropdown
+            items={items}
+            label="Project actions"
+            align="end"
+            header={
+                <div className="border-b border-line px-2.5 pt-1.5 pb-2">
+                    <p className="truncate text-[12px] font-medium text-ink">{project.name || "Untitled project"}</p>
+                    <p className="mt-0.5 truncate font-mono text-[9px] text-ink-muted" title={project.path}>
+                        {shortenPath(project.path, 38)}
+                    </p>
+                </div>
+            }
+            renderTrigger={(props) => <IconButton icon={EllipsisVertical} label="Project actions" size="sm" {...props} />}
+        />
+    );
 }

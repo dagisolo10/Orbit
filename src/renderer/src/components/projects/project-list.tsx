@@ -7,18 +7,18 @@ import { shortenPath } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Project, Technology } from "@/types/project";
 
-const ROW_GRID = "grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1.5fr)_minmax(0,1.4fr)_auto] lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1.5fr)_minmax(0,1.1fr)_auto]";
+const ROW_GRID = "grid items-center gap-3 grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1.4fr)_minmax(0,1.45fr)_minmax(0,1.05fr)_auto]";
 
 export function ProjectList({ projects, onOpenDetails, onSelectTech }: { projects: Project[]; onOpenDetails: (project: Project) => void; onSelectTech: (technology: Technology) => void }) {
     return (
-        <div className="overflow-hidden rounded-xl border border-white/8 bg-white/1.5">
-            <div className={cn(ROW_GRID, "hidden border-b border-white/8 px-3 py-2 text-[11px] font-semibold tracking-wider text-muted-foreground/70 uppercase md:grid")}>
-                <span>Project</span>
-                <span>Technologies</span>
-                <span className="hidden lg:block">Location</span>
-                <span className="text-right">Actions</span>
+        <div className="overflow-hidden rounded-[2px] border border-line bg-panel">
+            <div className={cn(ROW_GRID, "hidden border-b border-line bg-panel-inset px-3 py-2 md:grid")}>
+                <span className="label-mono text-ink-muted">PROJECT</span>
+                <span className="label-mono text-ink-muted">STACK</span>
+                <span className="label-mono text-ink-muted">LOCATION</span>
+                <span className="label-mono text-right text-ink-muted">ACTIONS</span>
             </div>
-            <div className="divide-y divide-white/6">
+            <div className="divide-y divide-line-soft">
                 {projects.map((project) => (
                     <ProjectRow key={project.path} project={project} onOpenDetails={onOpenDetails} onSelectTech={onSelectTech} />
                 ))}
@@ -35,33 +35,45 @@ function ProjectRow({ project, onOpenDetails, onSelectTech }: { project: Project
     const hiddenCount = project.technologies.length - shown.length;
 
     return (
-        <div onClick={() => onOpenDetails(project)} className={cn(ROW_GRID, "group cursor-pointer px-3 py-2.5 transition-colors hover:bg-white/3")}>
+        <div
+            onClick={() => onOpenDetails(project)}
+            className={cn(
+                ROW_GRID,
+                "group cursor-pointer px-3 py-2.5 transition-colors hover:bg-white/2.5 focus-within:bg-white/2.5",
+                "shadow-[inset_2px_0_0_0_transparent] hover:shadow-[inset_2px_0_0_0_var(--accent)]",
+            )}
+        >
             <div className="flex min-w-0 items-center gap-2.5">
                 <Monogram name={name} size="sm" />
-                <button
-                    type="button"
-                    onClick={(event) => {
-                        event.stopPropagation();
-                        onOpenDetails(project);
-                    }}
-                    title={name}
-                    className="min-w-0 flex-1 truncate rounded text-left text-[13px] font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                    {name}
-                </button>
+                <span className="min-w-0 flex-1">
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onOpenDetails(project);
+                        }}
+                        title={name}
+                        className="block w-full truncate rounded-[1px] text-left text-[12.5px] font-medium text-ink outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                    >
+                        {name}
+                    </button>
+                    <span className="block truncate font-mono text-[9px] text-ink-muted md:hidden" title={project.path}>
+                        {shortenPath(project.path, 40)}
+                    </span>
+                </span>
             </div>
 
-            <div className="hidden min-w-0 flex-wrap items-center gap-1.5 md:flex" onClick={(event) => event.stopPropagation()}>
+            <div className="hidden min-w-0 flex-wrap items-center gap-1 md:flex" onClick={(event) => event.stopPropagation()}>
                 {shown.length > 0 ? (
                     shown.map((tech) => <TechBadge key={tech.name} technology={tech} onClick={() => onSelectTech(tech)} />)
                 ) : (
-                    <span className="text-[11px] text-muted-foreground/70">—</span>
+                    <span className="font-mono text-[9px] tracking-[0.08em] text-ink-muted/70 uppercase">none detected</span>
                 )}
-                {hiddenCount > 0 ? <span className="text-[11px] text-muted-foreground/70">+{hiddenCount}</span> : null}
+                {hiddenCount > 0 ? <span className="font-mono text-[9px] text-ink-muted">+{hiddenCount}</span> : null}
             </div>
 
             <div className="hidden min-w-0 lg:block">
-                <span className="block truncate font-mono text-[11px] text-muted-foreground" title={project.path}>
+                <span className="block truncate font-mono text-[10px] text-ink-muted" title={project.path}>
                     {shortenPath(project.path, 36)}
                 </span>
             </div>

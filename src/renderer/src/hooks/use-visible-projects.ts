@@ -27,7 +27,7 @@ export function sortProjects(projects: Project[], sortKey: SortKey): Project[] {
  * or any of its technologies. Shared by the explorer and the server project
  * picker so their search behavior never drifts apart.
  */
-export function projectMatchesTerm(project: Project, term: string): boolean {
+function projectMatchesTerm(project: Project, term: string): boolean {
     const needle = term.trim().toLowerCase();
     if (needle.length === 0) return true;
     return project.name.toLowerCase().includes(needle) || project.path.toLowerCase().includes(needle) || project.technologies.some((tech) => tech.name.toLowerCase().includes(needle));
@@ -39,8 +39,8 @@ export function filterProjectsByQuery(projects: Project[], query: string): Proje
     return projects.filter((project) => projectMatchesTerm(project, query));
 }
 
-export function useVisibleProjects(scope: ProjectScope): Project[] {
-    const { projects, allProjects, favorites, query, activeTech, activeCategory, sortKey } = useOrbit();
+export function useVisibleProjects(scope: ProjectScope, query: string): Project[] {
+    const { projects, allProjects, favorites, activeTech, activeCategory, sortKey } = useOrbit();
 
     return useMemo(() => {
         // "all" reflects the standalone projects view; favorites can point at any

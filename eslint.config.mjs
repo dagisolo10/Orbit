@@ -18,6 +18,12 @@ export default defineConfig(
     },
     {
         files: ["**/*.{ts,tsx}"],
+        languageOptions: {
+            parserOptions: {
+                projectService: true,
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
         plugins: {
             "react-hooks": eslintPluginReactHooks,
             "react-refresh": eslintPluginReactRefresh,
@@ -30,6 +36,10 @@ export default defineConfig(
             "@typescript-eslint/no-misused-promises": "off",
             "@typescript-eslint/no-unsafe-argument": "warn",
             "@typescript-eslint/no-explicit-any": "off",
+            // The codebase uses typed React components; runtime prop validation is unnecessary.
+            "react/prop-types": "warn",
+            // Data-loading and sync effects are intentional across the app's providers.
+            "react-hooks/set-state-in-effect": "warn",
         },
     },
 );

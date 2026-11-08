@@ -2,22 +2,22 @@ import type { TechnologyCategory } from "@/types/project";
 
 export type CategoryMeta = {
     label: string;
-    className: string;
-    dotClassName: string;
+    /** Compact form used in dense readouts. */
+    short: string;
 };
 
 export const CATEGORY_ORDER: TechnologyCategory[] = ["language", "frontend", "backend", "styling", "database-orm", "tools"];
 
 export const CATEGORY_META: Record<TechnologyCategory, CategoryMeta> = {
-    language: { label: "Languages", className: "text-sky-300 bg-sky-400/10 ring-sky-300/20", dotClassName: "bg-sky-400" },
-    frontend: { label: "Frontend", className: "text-violet-300 bg-violet-400/10 ring-violet-300/20", dotClassName: "bg-violet-400" },
-    backend: { label: "Backend", className: "text-emerald-300 bg-emerald-400/10 ring-emerald-300/20", dotClassName: "bg-emerald-400" },
-    styling: { label: "Styling", className: "text-pink-300 bg-pink-400/10 ring-pink-300/20", dotClassName: "bg-pink-400" },
-    "database-orm": { label: "Database / ORM", className: "text-amber-300 bg-amber-400/10 ring-amber-300/20", dotClassName: "bg-amber-400" },
-    tools: { label: "Tools", className: "text-zinc-300 bg-white/5 ring-white/10", dotClassName: "bg-zinc-400" },
+    language: { label: "Languages", short: "LANG" },
+    frontend: { label: "Frontend", short: "UI" },
+    backend: { label: "Backend", short: "SRV" },
+    styling: { label: "Styling", short: "CSS" },
+    "database-orm": { label: "Database / ORM", short: "DB" },
+    tools: { label: "Tools", short: "OPS" },
 };
 
-const FALLBACK_META: CategoryMeta = { label: "Other", className: "text-zinc-300 bg-white/5 ring-white/10", dotClassName: "bg-zinc-400" };
+const FALLBACK_META: CategoryMeta = { label: "Other", short: "MISC" };
 
 const TECH_LABELS: Record<string, string> = {
     react: "React",

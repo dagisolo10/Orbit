@@ -1,24 +1,24 @@
+import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ButtonHTMLAttributes } from "react";
 
-import { cn } from "@/lib/utils";
-
 const buttonVariants = cva(
-    "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45",
+    "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-[2px] border font-medium outline-none transition-[background-color,border-color,color,transform] duration-150 ease-[var(--ease-orbit)] focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg disabled:pointer-events-none disabled:opacity-40 active:translate-y-px",
     {
         variants: {
             variant: {
-                primary: "bg-primary text-primary-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.14),0_10px_24px_-12px_rgba(124,92,240,0.9)] hover:bg-primary/90",
-                secondary: "border border-white/8 bg-white/[0.04] text-foreground hover:bg-white/[0.075]",
-                outline: "border border-border bg-transparent text-foreground hover:bg-white/5",
-                ghost: "text-muted-foreground hover:bg-white/5 hover:text-foreground",
-                subtle: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-                danger: "bg-destructive/90 text-destructive-foreground hover:bg-destructive",
+                primary: "border-accent bg-accent text-accent-ink shadow-[inset_0_1px_0_0_rgba(255,255,255,0.18)] hover:bg-[#ff5a64] hover:border-[#ff5a64]",
+                secondary: "border-line bg-panel-raised text-ink hover:border-line-strong hover:bg-[#1c2024]",
+                outline: "border-line bg-transparent text-ink hover:border-line-strong hover:bg-panel-raised",
+                ghost: "border-transparent bg-transparent text-ink-soft hover:bg-panel-raised hover:text-ink",
+                subtle: "border-line-soft bg-panel-inset text-ink-soft hover:border-line hover:text-ink",
+                danger: "border-danger/40 bg-danger/10 text-danger hover:border-danger/70 hover:bg-danger/16",
             },
             size: {
-                sm: "h-8 px-3 text-xs",
-                md: "h-9 px-3.5 text-sm",
-                lg: "h-10 px-4 text-sm",
+                xs: "h-6 px-2 text-[10px] tracking-[0.08em] uppercase",
+                sm: "h-7 px-2.5 text-[11px]",
+                md: "h-8 px-3 text-xs",
+                lg: "h-9 px-4 text-[13px]",
             },
         },
         defaultVariants: { variant: "secondary", size: "md" },
