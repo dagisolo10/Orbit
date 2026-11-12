@@ -1,5 +1,5 @@
 import type { OrbitSnapshot, ProjectOpenTarget } from "@/types/project";
-import type { AppInfo, LaunchAppCatalog, LaunchKind, LaunchPreference, LaunchPreferences, ProjectsRootState } from "@shared/types/settings";
+import type { AppInfo, LaunchAppCatalog, LaunchKind, LaunchPreference, LaunchPreferences, ProjectsRootState, ScanExclusionsState } from "@shared/types/settings";
 
 export type OrbitErrorCode = "BRIDGE_MISSING" | "SCAN_FAILED" | "OPEN_FAILED" | "SETTINGS_FAILED" | "PICK_FAILED" | "LAUNCHER_FAILED" | "APP_INFO_FAILED" | "EXTERNAL_FAILED" | "SERVERS_FAILED";
 
@@ -78,6 +78,48 @@ export async function saveProjectsRoot(rootPath: string): Promise<Result<Project
 
     try {
         const value = await window.api.invoke("settings:set-projects-root", rootPath);
+        return { ok: true, value };
+    } catch (error) {
+        return { ok: false, error: { code: "SETTINGS_FAILED", message: toMessage(error) } };
+    }
+}
+
+/** Reads the custom folders excluded from scanning, plus the built-in names. */
+export async function loadScanExclusions(): Promise<Result<ScanExclusionsState>> {
+    if (!hasPreloadBridge()) {
+        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
+    }
+
+    try {
+        const value = await window.api.invoke("settings:get-scan-exclusions");
+        return { ok: true, value };
+    } catch (error) {
+        return { ok: false, error: { code: "SETTINGS_FAILED", message: "Orbit could not read the scan exclusions.", detail: toMessage(error) } };
+    }
+}
+
+/** Persists a user-selected folder to skip during scans. */
+export async function addScanExclusion(target: string): Promise<Result<ScanExclusionsState>> {
+    if (!hasPreloadBridge()) {
+        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
+    }
+
+    try {
+        const value = await window.api.invoke("settings:add-scan-exclusion", target);
+        return { ok: true, value };
+    } catch (error) {
+        return { ok: false, error: { code: "SETTINGS_FAILED", message: toMessage(error) } };
+    }
+}
+
+/** Removes a saved scan exclusion so the folder is scanned again. */
+export async function removeScanExclusion(target: string): Promise<Result<ScanExclusionsState>> {
+    if (!hasPreloadBridge()) {
+        return { ok: false, error: { code: "BRIDGE_MISSING", message: "The preload bridge is unavailable." } };
+    }
+
+    try {
+        const value = await window.api.invoke("settings:remove-scan-exclusion", target);
         return { ok: true, value };
     } catch (error) {
         return { ok: false, error: { code: "SETTINGS_FAILED", message: toMessage(error) } };

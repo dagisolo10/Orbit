@@ -22,7 +22,7 @@ const FEATURED_LIMIT = 6;
 const PINNED_LIMIT = 5;
 
 export function OverviewPage({ onNavigate }: { onNavigate: (view: ViewId) => void }) {
-    const { status, error, reload, reScan, reScanning, dismissError, allProjects, workspaces, technologies, favorites, snapshot, setActiveTech, projectsRoot } = useOrbit();
+    const { status, error, reload, reScan, reScanning, dismissError, allProjects, projects, workspaces, technologies, favorites, snapshot, setActiveTech, projectsRoot } = useOrbit();
     const [detailsProject, setDetailsProject] = useState<Project | null>(null);
 
     const loading = status === "loading";
@@ -62,7 +62,7 @@ export function OverviewPage({ onNavigate }: { onNavigate: (view: ViewId) => voi
 
             {status === "error" && error ? <ScannerOfflineState error={error} onRetry={reload} /> : null}
 
-            {status === "ready" && allProjects.length === 0 ? (
+            {status === "ready" && projects.length === 0 ? (
                 <EmptyState
                     icon={FolderSearch}
                     label="INDEX EMPTY"
@@ -85,14 +85,14 @@ export function OverviewPage({ onNavigate }: { onNavigate: (view: ViewId) => voi
                 />
             ) : null}
 
-            {status === "ready" && allProjects.length > 0 ? (
+            {status === "ready" && projects.length > 0 && (
                 <>
                     <Deck
                         loading={loading}
                         rootPath={rootPath}
-                        projectCount={allProjects.length}
-                        workspaceCount={workspaces.length}
+                        projectCount={projects.length}
                         techCount={technologies.length}
+                        workspaceCount={workspaces.length}
                         scannedAt={snapshot?.scannedAt ?? null}
                     />
 
@@ -179,7 +179,7 @@ export function OverviewPage({ onNavigate }: { onNavigate: (view: ViewId) => voi
                         </div>
                     </div>
                 </>
-            ) : null}
+            )}
 
             <ProjectDetails
                 project={detailsProject}

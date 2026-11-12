@@ -44,7 +44,7 @@ export function App() {
                     {view === "servers" ? (
                         <ServersView />
                     ) : (
-                        <div key={view} className="animate-rise mx-auto w-full max-w-[1560px] px-5 py-6 lg:px-8 lg:py-7">
+                        <div key={view} className="animate-rise mx-auto w-full max-w-[1720px] px-5 py-6 lg:px-8 lg:py-7">
                             {view === "overview" ? <OverviewPage onNavigate={setView} /> : null}
                             {view === "projects" ? <ProjectExplorer scope="all" /> : null}
                             {view === "workspaces" ? <WorkspacesView /> : null}

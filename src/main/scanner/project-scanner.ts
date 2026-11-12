@@ -3,6 +3,7 @@ import type { PackageManifest, Project, Technology, Workspace } from "@shared/ty
 import { Dirent } from "fs";
 import { readdir, readFile } from "fs/promises";
 import path from "path";
+import yaml from "yaml";
 
 /**
  * Renderer-integration copy of the main-process scanner.
@@ -33,22 +34,33 @@ export type ScanResult = {
     workspaces: Workspace[];
 };
 
+export type ScanOptions = {
+    /** Absolute directories to skip in addition to the built-in `skipped` names. */
+    excludedPaths?: string[];
+};
+
 /**
- * Recursively scans `rootPath` for `package.json` markers and returns a fresh,
- * de-duplicated set of standalone projects plus workspace groups. Throws only
- * when the configured root itself cannot be read; unreadable sub-directories and
- * malformed manifests are skipped so a single bad entry never aborts the scan.
+ * Recursively scans `rootPath` for `package.json` manifests and
+ * `pnpm-workspace.yaml` files, and returns a fresh, de-duplicated set of
+ * standalone projects plus workspace groups. Throws only when the configured
+ * root itself cannot be read; unreadable sub-directories and malformed
+ * manifests are skipped so a single bad entry never aborts the scan.
  */
-export async function scanProjects(rootPath: string): Promise<ScanResult> {
+export async function scanProjects(rootPath: string, options: ScanOptions = {}): Promise<ScanResult> {
     const projects = new Map<string, Project>();
     const workspaces = new Map<string, Workspace>();
+    const excludedPaths = new Set((options.excludedPaths ?? []).map((target) => path.normalize(target)));
 
-    await walk(rootPath, projects, workspaces, true);
+    if (excludedPaths.has(path.normalize(rootPath))) {
+        return { projects: [], workspaces: [] };
+    }
+
+    await walk(rootPath, projects, workspaces, true, excludedPaths);
 
     return partition(projects, workspaces);
 }
 
-async function walk(dirPath: string, projects: Map<string, Project>, workspaces: Map<string, Workspace>, isRoot: boolean): Promise<void> {
+async function walk(dirPath: string, projects: Map<string, Project>, workspaces: Map<string, Workspace>, isRoot: boolean, excludedPaths: Set<string>): Promise<void> {
     let entries: Dirent[];
 
     try {
@@ -61,13 +73,17 @@ async function walk(dirPath: string, projects: Map<string, Project>, workspaces:
         return;
     }
 
-    if (entries.some((entry) => entry.isFile() && projectMarkers.has(entry.name))) {
-        const manifest = await readManifest(path.join(dirPath, "package.json"));
+    const hasPackageJson = entries.some((entry) => entry.isFile() && projectMarkers.has(entry.name));
+    const hasPnpmWorkspace = entries.some((entry) => entry.isFile() && entry.name === "pnpm-workspace.yaml");
+
+    if (hasPackageJson || hasPnpmWorkspace) {
+        const manifest = await readManifest(dirPath, hasPackageJson, hasPnpmWorkspace);
 
         if (manifest) {
             projects.set(manifest.project.path, manifest.project);
 
-            // A package.json declaring `workspaces` becomes a workspace root. The
+            // A package.json declaring `workspaces`, or a pnpm-workspace.yaml with
+            // at least one valid package entry, becomes a workspace root. The
             // root's own project is tracked only so it can be excluded from the
             // project lists later; it must never surface as a project.
             if (manifest.isWorkspaceRoot) {
@@ -78,7 +94,11 @@ async function walk(dirPath: string, projects: Map<string, Project>, workspaces:
 
     for (const entry of entries) {
         if (!entry.isDirectory() || skipped.has(entry.name)) continue;
-        await walk(path.join(dirPath, entry.name), projects, workspaces, false);
+
+        const childPath = path.join(dirPath, entry.name);
+        if (excludedPaths.has(path.normalize(childPath))) continue;
+
+        await walk(childPath, projects, workspaces, false, excludedPaths);
     }
 }
 
@@ -87,31 +107,73 @@ type Manifest = {
     isWorkspaceRoot: boolean;
 };
 
-async function readManifest(packageJsonPath: string): Promise<Manifest | null> {
-    try {
-        const content = await readFile(packageJsonPath, "utf-8");
-        const packageJson = JSON.parse(content) as PackageManifest;
-        const directory = path.dirname(packageJsonPath);
+async function readManifest(dirPath: string, hasPackageJson: boolean, hasPnpmWorkspace: boolean): Promise<Manifest | null> {
+    const packageJsonPath = path.join(dirPath, "package.json");
+    let packageJson: PackageManifest = {};
 
-        const dependencies = {
-            ...packageJson.dependencies,
-            ...packageJson.devDependencies,
-        };
-
-        const technologies: Technology[] = [];
-
-        for (const [name, { category, packages }] of Object.entries(techStack)) {
-            if (packages.some((pkg) => pkg in dependencies)) {
-                technologies.push({ name, category });
-            }
+    if (hasPackageJson) {
+        try {
+            const content = await readFile(packageJsonPath, "utf-8");
+            packageJson = JSON.parse(content) as PackageManifest;
+        } catch (error) {
+            console.error(`[scanner] Skipping malformed project manifest: ${packageJsonPath}`, error);
+            return null;
         }
+    }
 
-        const name = typeof packageJson.name === "string" && packageJson.name.trim().length > 0 ? packageJson.name : path.basename(directory);
+    const isPnpmWorkspace = hasPnpmWorkspace && (await isPnpmWorkspaceRoot(dirPath));
 
-        return { project: { name, path: directory, technologies }, isWorkspaceRoot: Boolean(packageJson.workspaces) };
-    } catch (error) {
-        console.error(`[scanner] Skipping malformed project manifest: ${packageJsonPath}`, error);
-        return null;
+    // A pnpm-workspace.yaml without a package.json only contributes a workspace
+    // root. Without at least one valid package glob there is nothing to register.
+    if (!hasPackageJson && !isPnpmWorkspace) return null;
+
+    const dependencies = {
+        ...packageJson.dependencies,
+        ...packageJson.devDependencies,
+    };
+
+    const technologies: Technology[] = [];
+
+    for (const [name, { category, packages }] of Object.entries(techStack)) {
+        if (packages.some((pkg) => pkg in dependencies)) {
+            technologies.push({ name, category });
+        }
+    }
+
+    const name = typeof packageJson.name === "string" && packageJson.name.trim().length > 0 ? packageJson.name : path.basename(dirPath);
+
+    return {
+        project: {
+            name,
+            technologies,
+            path: dirPath,
+        },
+        isWorkspaceRoot: Boolean(packageJson.workspaces) || isPnpmWorkspace,
+    };
+}
+
+/**
+ * A pnpm workspace is only real when `packages` lists at least one usable glob:
+ * a non-empty string that is neither the root itself (`.`) nor a negation
+ * (`!...`). A missing list, an empty list, or a list made only of exclusions is
+ * not a workspace.
+ */
+async function isPnpmWorkspaceRoot(dirPath: string): Promise<boolean> {
+    try {
+        const content = await readFile(path.join(dirPath, "pnpm-workspace.yaml"), "utf-8");
+        const parsed = yaml.parse(content) as { packages?: unknown } | null;
+        const packages = parsed?.packages;
+
+        if (!Array.isArray(packages)) return false;
+
+        return packages.some((entry) => {
+            if (typeof entry !== "string") return false;
+
+            const value = entry.trim();
+            return value !== "" && value !== "." && !value.startsWith("!");
+        });
+    } catch {
+        return false;
     }
 }
 

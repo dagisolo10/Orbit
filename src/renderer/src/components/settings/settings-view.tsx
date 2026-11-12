@@ -2,16 +2,38 @@ import logo from "@/assets/logo.png";
 import { LaunchPreferenceSetting, preferenceLabel } from "@/components/settings/launch-preference";
 import { SettingRow, SettingSection } from "@/components/settings/setting-row";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { useInterfaceScale } from "@/contexts/interface-scale-context";
 import { useOrbit } from "@/contexts/orbit-context";
 import { useToast } from "@/contexts/toast-context";
-import { pluralize } from "@/lib/format";
+import { pluralize, shortenPath } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { loadAppInfo, loadLaunchApps, loadLaunchPreferences, openExternal, saveLaunchPreference } from "@/services/orbit";
+import { addScanExclusion, loadAppInfo, loadLaunchApps, loadLaunchPreferences, loadScanExclusions, openExternal, pickDirectory, removeScanExclusion, saveLaunchPreference } from "@/services/orbit";
 import { VIEW_META } from "@/types/navigation";
-import type { AppInfo, LaunchAppCatalog, LaunchKind, LaunchPreference, LaunchPreferences } from "@shared/types/settings";
-import { BookOpen, Code, FolderOpen, FolderSearch, FolderTree, GitBranch, Minus, Palette, Plus, RefreshCw, RotateCcw, Scaling, Terminal, TriangleAlert } from "lucide-react";
+import type { AppInfo, LaunchAppCatalog, LaunchKind, LaunchPreference, LaunchPreferences, ScanExclusionsState } from "@shared/types/settings";
+import {
+    BookOpen,
+    ChevronRight,
+    Code,
+    FolderMinus,
+    FolderOpen,
+    FolderPlus,
+    FolderSearch,
+    FolderTree,
+    FolderX,
+    GitBranch,
+    Minus,
+    Palette,
+    Plus,
+    RefreshCw,
+    RotateCcw,
+    Scaling,
+    ShieldX,
+    Terminal,
+    TriangleAlert,
+    X,
+} from "lucide-react";
 import { useCallback, useEffect, useState, type KeyboardEvent } from "react";
 
 const DOCS_URL = "https://orbit.dagidev.com";
@@ -35,14 +57,18 @@ export function SettingsView() {
     const [activeSection, setActiveSection] = useState<SettingsSectionId>("general");
     const [catalog, setCatalog] = useState<LaunchAppCatalog | null>(null);
     const [preferences, setPreferences] = useState<LaunchPreferences | null>(null);
+    const [exclusions, setExclusions] = useState<ScanExclusionsState | null>(null);
+    const [exclusionsOpen, setExclusionsOpen] = useState(false);
+    const [pendingRemoval, setPendingRemoval] = useState<string | null>(null);
     const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
     const [savingKind, setSavingKind] = useState<LaunchKind | null>(null);
+    const [savingExclusion, setSavingExclusion] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
 
         void (async () => {
-            const [appsResult, prefsResult, infoResult] = await Promise.all([loadLaunchApps(), loadLaunchPreferences(), loadAppInfo()]);
+            const [appsResult, prefsResult, infoResult, exclusionsResult] = await Promise.all([loadLaunchApps(), loadLaunchPreferences(), loadAppInfo(), loadScanExclusions()]);
             if (cancelled) return;
 
             if (appsResult.ok) setCatalog(appsResult.value);
@@ -52,6 +78,9 @@ export function SettingsView() {
             else toast({ title: prefsResult.error.message, description: prefsResult.error.detail, tone: "error" });
 
             if (infoResult.ok) setAppInfo(infoResult.value);
+
+            if (exclusionsResult.ok) setExclusions(exclusionsResult.value);
+            else toast({ title: exclusionsResult.error.message, description: exclusionsResult.error.detail, tone: "error" });
         })();
 
         return () => {
@@ -89,6 +118,58 @@ export function SettingsView() {
     const rootPath = projectsRoot?.path ?? snapshot?.rootPath ?? null;
     const rootAvailable = projectsRoot ? projectsRoot.available : Boolean(snapshot?.rootPath);
     const rootIsCustom = projectsRoot?.isCustom ?? false;
+
+    const addExclusion = useCallback(async () => {
+        if (savingExclusion) return;
+        setSavingExclusion(true);
+
+        try {
+            const picked = await pickDirectory(rootPath ?? undefined, "Choose a folder to exclude from scans");
+
+            if (!picked.ok) {
+                toast({ title: picked.error.message, description: picked.error.detail, tone: "error" });
+                return;
+            }
+
+            if (picked.value === null) return;
+
+            const result = await addScanExclusion(picked.value);
+
+            if (!result.ok) {
+                toast({ title: result.error.message, description: result.error.detail, tone: "error" });
+                return;
+            }
+
+            setExclusions(result.value);
+            setExclusionsOpen(true);
+            toast({ title: "Folder excluded", description: picked.value, tone: "success" });
+            reScan();
+        } finally {
+            setSavingExclusion(false);
+        }
+    }, [reScan, rootPath, savingExclusion, toast]);
+
+    const removeExclusion = useCallback(
+        async (target: string): Promise<boolean> => {
+            if (savingExclusion) return false;
+            setSavingExclusion(true);
+
+            const result = await removeScanExclusion(target);
+            setSavingExclusion(false);
+
+            if (!result.ok) {
+                toast({ title: result.error.message, description: result.error.detail, tone: "error" });
+                return false;
+            }
+
+            setExclusions(result.value);
+            if (result.value.paths.length === 0) setExclusionsOpen(false);
+            toast({ title: "Folder included again", description: target, tone: "success" });
+            reScan();
+            return true;
+        },
+        [reScan, savingExclusion, toast],
+    );
 
     const scannerValue = status === "loading" ? "Scanning…" : status === "error" ? "Not connected" : pluralize(projects.length, "project");
 
@@ -207,6 +288,63 @@ export function SettingsView() {
                             }
                         />
                         <SettingRow
+                            icon={FolderX}
+                            label="Scan exclusions"
+                            value={exclusions === null ? "Loading excluded folders…" : "Folders Orbit skips while scanning. Built-in names like node_modules are always ignored."}
+                            action={
+                                <Button variant="secondary" size="sm" onClick={() => void addExclusion()} disabled={savingExclusion || exclusions === null}>
+                                    <Plus className={cn("size-3.5", savingExclusion && "animate-pulse")} />
+                                    {savingExclusion ? "Saving…" : "Add folder"}
+                                </Button>
+                            }
+                        />
+                        {exclusions && exclusions.paths.length > 0 ? (
+                            <button
+                                type="button"
+                                aria-expanded={exclusionsOpen}
+                                onClick={() => setExclusionsOpen((open) => !open)}
+                                className="grid w-full grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-3 py-3 text-left transition-colors hover:bg-panel-inset/40"
+                            >
+                                <ChevronRight className={cn("size-3.5 text-ink-muted duration-200 transition-transform", exclusionsOpen && "rotate-90")} strokeWidth={1.75} />
+                                <div className="min-w-0">
+                                    <p className="text-[12px] font-medium text-ink">Excluded folders</p>
+                                    <p className="mt-0.5 truncate text-[11px] text-ink-muted">
+                                        {exclusionsOpen ? "Hide the folders excluded from scans." : `Show ${pluralize(exclusions.paths.length, "excluded folder")}.`}
+                                    </p>
+                                </div>
+                                <span className="shrink-0 rounded-[2px] border border-line bg-panel-inset px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-ink-muted">
+                                    {exclusions.paths.length}
+                                </span>
+                            </button>
+                        ) : null}
+                        <div className="ml-8">
+                            {exclusionsOpen
+                                ? exclusions?.paths.map((excludedPath) => (
+                                      <SettingRow
+                                          key={excludedPath}
+                                          icon={FolderMinus}
+                                          label={folderName(excludedPath)}
+                                          value={shortenPath(excludedPath, 88)}
+                                          mono
+                                          action={
+                                              <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="px-1.5"
+                                                  disabled={savingExclusion}
+                                                  onClick={() => setPendingRemoval(excludedPath)}
+                                                  title={`Include ${folderName(excludedPath)} in scans`}
+                                                  aria-label={`Include ${folderName(excludedPath)} in scans`}
+                                              >
+                                                  <X className="size-3.5" />
+                                              </Button>
+                                          }
+                                      />
+                                  ))
+                                : null}
+                        </div>
+                        {exclusions ? <SettingRow icon={ShieldX} label="Built-in exclusions" value={exclusions.predefined.join(", ")} mono /> : null}
+                        <SettingRow
                             icon={Scaling}
                             label="Interface scale"
                             value={`${Math.round(scale * 100)}% — native zoom for the entire interface · Shift + + - 0`}
@@ -324,6 +462,57 @@ export function SettingsView() {
                     </SettingSection>
                 ) : null}
             </div>
+
+            <RemoveExclusionModal
+                target={pendingRemoval}
+                onClose={() => setPendingRemoval(null)}
+                onConfirm={async () => {
+                    if (!pendingRemoval) return false;
+                    return removeExclusion(pendingRemoval);
+                }}
+            />
         </div>
     );
+}
+
+function RemoveExclusionModal({ target, onClose, onConfirm }: { target: string | null; onClose: () => void; onConfirm: () => Promise<boolean> }) {
+    const [removing, setRemoving] = useState(false);
+
+    const confirm = async () => {
+        setRemoving(true);
+        const removed = await onConfirm();
+        setRemoving(false);
+        if (removed) onClose();
+    };
+
+    return (
+        <Modal
+            open={target !== null}
+            onClose={onClose}
+            title="Include folder in scans"
+            description={target ? `Scan “${folderName(target)}” again?` : undefined}
+            footer={
+                <>
+                    <Button variant="ghost" size="sm" onClick={onClose} disabled={removing}>
+                        Cancel
+                    </Button>
+                    <Button size="sm" onClick={() => void confirm()} disabled={removing}>
+                        <FolderPlus className="size-3.5" />
+                        {removing ? "Including…" : "Include folder"}
+                    </Button>
+                </>
+            }
+        >
+            <div className="flex items-start gap-2.5 border border-line bg-panel-inset px-3 py-2.5">
+                <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-ink-muted" strokeWidth={1.9} />
+                <p className="text-[12px] leading-relaxed text-ink-soft">
+                    Orbit will include this folder in the next scan. That can take longer and surface projects you previously hid.
+                </p>
+            </div>
+        </Modal>
+    );
+}
+
+function folderName(target: string): string {
+    return target.split(/[\\/]/).filter(Boolean).pop() ?? target;
 }

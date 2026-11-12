@@ -1,8 +1,6 @@
 import { electronApp, optimizer } from "@electron-toolkit/utils";
 import { registerIpcHandlers } from "@main/ipc/registration";
-import { scanDir } from "@main/scanner/scan";
 import { serverService } from "@main/server/service";
-import { resolveProjectsRoot } from "@main/settings/store";
 import { app, BrowserWindow, dialog } from "electron";
 
 import { createWindow } from "./window/main";
@@ -21,9 +19,6 @@ void app.whenReady().then(async () => {
 
     app.on("browser-window-created", (_, window) => optimizer.watchWindowShortcuts(window));
     registerIpcHandlers();
-
-    const rootPath = await resolveProjectsRoot();
-    await scanDir(rootPath);
 
     createAndCloseWindow();
 

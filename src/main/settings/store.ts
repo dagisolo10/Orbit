@@ -1,4 +1,5 @@
-import type { LaunchPreference, LaunchPreferences, ProjectsRootState } from "@shared/types/settings";
+import { skipped } from "@main/scanner/data";
+import type { LaunchPreference, LaunchPreferences, ProjectsRootState, ScanExclusionsState } from "@shared/types/settings";
 import { app } from "electron";
 import { constants } from "fs";
 import { access, mkdir, readFile, stat, writeFile } from "fs/promises";
@@ -15,13 +16,14 @@ import path from "path";
  * clobbers the others.
  */
 
-export type AppSettings = {
-    projectsRoot: string | null;
+type AppSettings = {
     editor: LaunchPreference;
+    scanExclusions: string[];
     terminal: LaunchPreference;
+    projectsRoot: string | null;
 };
 
-export type SettingsErrorCode = "INVALID_ROOT" | "INVALID_PREFERENCE";
+export type SettingsErrorCode = "INVALID_ROOT" | "INVALID_PREFERENCE" | "INVALID_EXCLUSION";
 
 export class SettingsError extends Error {
     readonly code: SettingsErrorCode;
@@ -40,7 +42,7 @@ function settingsFilePath(): string {
 }
 
 /** The fallback root, preserving Orbit's original `<home>/Projects` behavior. */
-export function defaultProjectsRoot(): string {
+function defaultProjectsRoot(): string {
     return path.join(app.getPath("home"), "Projects");
 }
 
@@ -57,14 +59,27 @@ function parsePreference(value: unknown): LaunchPreference {
     return { mode: "auto" };
 }
 
+function parseExcludedPaths(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+
+    const paths = value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0 && path.isAbsolute(entry)).map(path.normalize);
+
+    return [...new Set(paths)];
+}
+
 async function readSettings(): Promise<AppSettings> {
     try {
         const raw = await readFile(settingsFilePath(), "utf-8");
         const parsed = JSON.parse(raw) as Partial<AppSettings>;
         const projectsRoot = typeof parsed.projectsRoot === "string" && parsed.projectsRoot.trim().length > 0 ? parsed.projectsRoot : null;
-        return { projectsRoot, editor: parsePreference(parsed.editor), terminal: parsePreference(parsed.terminal) };
+        return {
+            projectsRoot,
+            editor: parsePreference(parsed.editor),
+            terminal: parsePreference(parsed.terminal),
+            scanExclusions: parseExcludedPaths(parsed.scanExclusions),
+        };
     } catch {
-        return { projectsRoot: null, editor: { mode: "auto" }, terminal: { mode: "auto" } };
+        return { projectsRoot: null, editor: { mode: "auto" }, terminal: { mode: "auto" }, scanExclusions: [] };
     }
 }
 
@@ -120,6 +135,41 @@ export async function setProjectsRoot(rootPath: string): Promise<ProjectsRootSta
 export async function resolveProjectsRoot(): Promise<string> {
     const settings = await readSettings();
     return settings.projectsRoot ?? defaultProjectsRoot();
+}
+
+/** Custom scan exclusions plus the built-in directory names the scanner always skips. */
+export async function getScanExclusions(): Promise<ScanExclusionsState> {
+    const settings = await readSettings();
+    return { paths: settings.scanExclusions, predefined: [...skipped] };
+}
+
+/** Validates and persists a user-selected folder to skip during scans. */
+export async function addScanExclusion(target: string): Promise<ScanExclusionsState> {
+    if (typeof target !== "string" || target.trim().length === 0 || !path.isAbsolute(target)) {
+        throw new SettingsError("Choose a folder to exclude from scans.", "INVALID_EXCLUSION");
+    }
+
+    const normalized = path.normalize(target);
+
+    if (!(await isReadableDirectory(normalized))) {
+        throw new SettingsError("That folder does not exist or cannot be read.", "INVALID_EXCLUSION");
+    }
+
+    const settings = await readSettings();
+
+    if (!settings.scanExclusions.includes(normalized)) {
+        await writeSettings({ ...settings, scanExclusions: [...settings.scanExclusions, normalized] });
+    }
+
+    return getScanExclusions();
+}
+
+/** Removes a saved scan exclusion, letting the scanner visit that folder again. */
+export async function removeScanExclusion(target: string): Promise<ScanExclusionsState> {
+    const normalized = typeof target === "string" && target.trim().length > 0 ? path.normalize(target) : "";
+    const settings = await readSettings();
+    await writeSettings({ ...settings, scanExclusions: settings.scanExclusions.filter((entry) => entry !== normalized) });
+    return getScanExclusions();
 }
 
 /** The saved editor/terminal choices, used to resolve launch actions. */

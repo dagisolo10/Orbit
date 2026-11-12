@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconButton } from "@/components/ui/icon-button";
 import { Modal } from "@/components/ui/modal";
+import { Segmented } from "@/components/ui/segmented";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServers } from "@/contexts/servers-context";
 import { useToast } from "@/contexts/toast-context";
+import { useDrag, type DragHandlers } from "@/hooks/use-drag";
+import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useProjectActions } from "@/hooks/use-project-actions";
 import { copyToClipboard } from "@/lib/clipboard";
 import { formatRelativeTime, shortenPath } from "@/lib/format";
@@ -15,8 +18,10 @@ import { cn } from "@/lib/utils";
 import { openLocalUrl } from "@/services/servers";
 import { VIEW_META } from "@/types/navigation";
 import type { ServerLogLine, ServerProject, ServerRuntimeState } from "@shared/types/server";
-import { Check, Copy, ExternalLink, FileCode, GripVertical, Play, Plus, RefreshCw, RotateCw, Server, Square, SquarePen, Trash2, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { Check, Columns3, Copy, ExternalLink, FileCode, GripVertical, Play, Plus, RefreshCw, RotateCw, Rows3, Server, Square, SquarePen, Trash2, TriangleAlert } from "lucide-react";
+import { useMemo, useState } from "react";
+
+type ServerLayout = "column" | "row";
 
 function stoppedState(id: string): ServerRuntimeState {
     return { id, status: "stopped", pid: null, startedAt: null, exitCode: null, signal: null, error: null, urls: [] };
@@ -29,23 +34,9 @@ export function ServersView() {
     const [formOpen, setFormOpen] = useState(false);
     const [editing, setEditing] = useState<ServerProject | null>(null);
     const [confirmRemove, setConfirmRemove] = useState<ServerProject | null>(null);
-    const [dragId, setDragId] = useState<string | null>(null);
-    const [dragOverId, setDragOverId] = useState<string | null>(null);
-
-    const dropOn = (targetId: string) => {
-        if (dragId && dragId !== targetId) {
-            const ids = projects.map((project) => project.id);
-            const from = ids.indexOf(dragId);
-            const to = ids.indexOf(targetId);
-            if (from !== -1 && to !== -1) {
-                ids.splice(from, 1);
-                ids.splice(to, 0, dragId);
-                void reorder(ids);
-            }
-        }
-        setDragId(null);
-        setDragOverId(null);
-    };
+    const [layout, setLayout] = useLocalStorage<ServerLayout>("orbit.serversLayout", "column");
+    const serverIds = useMemo(() => projects.map((project) => project.id), [projects]);
+    const { dragId, dragOverId, getDragHandlers } = useDrag({ items: serverIds, onReorder: (ids) => void reorder(ids) });
 
     const openAdd = () => {
         setEditing(null);
@@ -59,10 +50,12 @@ export function ServersView() {
 
     const header = (
         <ServersHeader
-            projectCount={projects.length}
-            runningCount={Object.values(states).filter((state) => state.status === "running" || state.status === "starting").length}
+            layout={layout}
             onAdd={openAdd}
             onReload={reload}
+            onLayoutChange={setLayout}
+            projectCount={projects.length}
+            runningCount={Object.values(states).filter((state) => state.status === "running" || state.status === "starting").length}
         />
     );
 
@@ -70,16 +63,29 @@ export function ServersView() {
         return (
             <div className="flex h-full min-h-0 flex-col">
                 {header}
-                <div className="flex min-h-0 flex-1">
-                    <div className="hidden w-70 shrink-0 space-y-2 border-r border-line p-3 lg:block">
-                        {Array.from({ length: 6 }).map((_, index) => (
-                            <Skeleton key={index} className="h-11 w-full" />
-                        ))}
+                {layout === "column" ? (
+                    <div className="flex min-h-0 flex-1">
+                        <div className="hidden w-70 shrink-0 space-y-2 border-r border-line p-3 lg:block">
+                            {Array.from({ length: 6 }).map((_, index) => (
+                                <Skeleton key={index} className="h-11 w-full" />
+                            ))}
+                        </div>
+                        <div className="flex-1 p-4">
+                            <Skeleton className="h-full min-h-64 w-full" />
+                        </div>
                     </div>
-                    <div className="flex-1 p-4">
-                        <Skeleton className="h-full min-h-64 w-full" />
+                ) : (
+                    <div className="flex min-h-0 flex-1 flex-col">
+                        <div className="flex shrink-0 gap-2 overflow-hidden border-b border-line p-3">
+                            {Array.from({ length: 4 }).map((_, index) => (
+                                <Skeleton key={index} className="h-13 w-48 shrink-0" />
+                            ))}
+                        </div>
+                        <div className="flex-1 p-4">
+                            <Skeleton className="h-full min-h-64 w-full" />
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         );
     }
@@ -133,39 +139,54 @@ export function ServersView() {
                     </div>
                 </div>
             ) : (
-                <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-                    <aside className="flex max-h-52 min-h-0 w-full shrink-0 flex-col border-b border-line bg-panel lg:max-h-none lg:w-71.5 lg:border-r lg:border-b-0">
-                        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2">
-                            <span className="label-mono text-ink-muted">SERVER INDEX</span>
-                            <span className="font-mono text-[9px] tabular-nums text-ink-muted/70">{String(projects.length).padStart(2, "0")}</span>
+                <div className={cn("flex min-h-0 flex-1", layout === "column" ? "flex-col lg:flex-row" : "flex-col")}>
+                    {layout === "column" ? (
+                        <aside className="flex max-h-52 min-h-0 w-full shrink-0 flex-col border-b border-line bg-panel lg:max-h-none lg:w-71.5 lg:border-r lg:border-b-0">
+                            <ServerIndexHeader count={projects.length} />
+                            <div className="min-h-0 flex-1 overflow-y-auto">
+                                {projects.map((project, index) => (
+                                    <ServerIndexRow
+                                        index={index}
+                                        layout="column"
+                                        key={project.id}
+                                        project={project}
+                                        active={project.id === activeId}
+                                        dragging={project.id === dragId}
+                                        dragOver={project.id === dragOverId}
+                                        onSelect={() => setActiveId(project.id)}
+                                        dragHandlers={getDragHandlers(project.id)}
+                                        state={states[project.id] ?? stoppedState(project.id)}
+                                    />
+                                ))}
+                            </div>
+                            <div className="hidden shrink-0 border-t border-line px-3 py-2 font-mono text-[9px] leading-relaxed tracking-[0.04em] text-ink-muted/70 lg:block">
+                                Drag rows to reorder the index.
+                            </div>
+                        </aside>
+                    ) : (
+                        <div className="flex shrink-0 flex-col border-b border-line bg-panel">
+                            <ServerIndexHeader count={projects.length} />
+                            <div className="flex gap-1.5 overflow-x-auto p-2">
+                                {projects.map((project, index) => (
+                                    <ServerIndexRow
+                                        layout="row"
+                                        index={index}
+                                        key={project.id}
+                                        project={project}
+                                        active={project.id === activeId}
+                                        dragging={project.id === dragId}
+                                        dragOver={project.id === dragOverId}
+                                        onSelect={() => setActiveId(project.id)}
+                                        dragHandlers={getDragHandlers(project.id)}
+                                        state={states[project.id] ?? stoppedState(project.id)}
+                                    />
+                                ))}
+                            </div>
+                            <div className="hidden shrink-0 border-t border-line px-3 py-1.5 font-mono text-[9px] leading-relaxed tracking-[0.04em] text-ink-muted/70 lg:block">
+                                Drag cards to reorder the index.
+                            </div>
                         </div>
-                        <div className="min-h-0 flex-1 overflow-y-auto">
-                            {projects.map((project, index) => (
-                                <ServerIndexRow
-                                    key={project.id}
-                                    project={project}
-                                    index={index}
-                                    state={states[project.id] ?? stoppedState(project.id)}
-                                    active={project.id === activeId}
-                                    dragging={project.id === dragId}
-                                    dragOver={project.id === dragOverId}
-                                    onSelect={() => setActiveId(project.id)}
-                                    onDragStart={() => setDragId(project.id)}
-                                    onDragOver={() => {
-                                        if (dragId && dragId !== project.id) setDragOverId(project.id);
-                                    }}
-                                    onDrop={() => dropOn(project.id)}
-                                    onDragEnd={() => {
-                                        setDragId(null);
-                                        setDragOverId(null);
-                                    }}
-                                />
-                            ))}
-                        </div>
-                        <div className="hidden shrink-0 border-t border-line px-3 py-2 font-mono text-[9px] leading-relaxed tracking-[0.04em] text-ink-muted/70 lg:block">
-                            Drag rows to reorder the index.
-                        </div>
-                    </aside>
+                    )}
 
                     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
                         {activeProject && activeState ? (
@@ -211,7 +232,21 @@ export function ServersView() {
     );
 }
 
-function ServersHeader({ projectCount, runningCount, onAdd, onReload }: { projectCount: number; runningCount: number; onAdd: () => void; onReload: () => void }) {
+function ServersHeader({
+    onAdd,
+    layout,
+    onReload,
+    projectCount,
+    runningCount,
+    onLayoutChange,
+}: {
+    onAdd: () => void;
+    onReload: () => void;
+    projectCount: number;
+    runningCount: number;
+    layout: ServerLayout;
+    onLayoutChange: (layout: ServerLayout) => void;
+}) {
     const meta = VIEW_META.servers;
 
     return (
@@ -235,6 +270,14 @@ function ServersHeader({ projectCount, runningCount, onAdd, onReload }: { projec
                             {String(runningCount).padStart(2, "0")}/{String(projectCount).padStart(2, "0")}
                         </span>
                     </span>
+                    <Segmented<ServerLayout>
+                        options={[
+                            { value: "column", label: "Column", icon: Columns3 },
+                            { value: "row", label: "Row", icon: Rows3 },
+                        ]}
+                        value={layout}
+                        onChange={onLayoutChange}
+                    />
                     <IconButton icon={RefreshCw} label="Reload servers" size="sm" side="bottom" onClick={onReload} />
                     <Button variant="primary" size="sm" onClick={onAdd}>
                         <Plus className="size-3.5" strokeWidth={2} />
@@ -246,6 +289,15 @@ function ServersHeader({ projectCount, runningCount, onAdd, onReload }: { projec
     );
 }
 
+function ServerIndexHeader({ count }: { count: number }) {
+    return (
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2">
+            <span className="label-mono text-ink-muted">SERVER INDEX</span>
+            <span className="font-mono text-[9px] tabular-nums text-ink-muted/70">{String(count).padStart(2, "0")}</span>
+        </div>
+    );
+}
+
 function ServerIndexRow({
     project,
     index,
@@ -253,11 +305,9 @@ function ServerIndexRow({
     active,
     dragging,
     dragOver,
+    layout,
     onSelect,
-    onDragStart,
-    onDragOver,
-    onDrop,
-    onDragEnd,
+    dragHandlers,
 }: {
     project: ServerProject;
     index: number;
@@ -265,40 +315,31 @@ function ServerIndexRow({
     active: boolean;
     dragging: boolean;
     dragOver: boolean;
+    layout: ServerLayout;
     onSelect: () => void;
-    onDragStart: () => void;
-    onDragOver: () => void;
-    onDrop: () => void;
-    onDragEnd: () => void;
+    dragHandlers: DragHandlers;
 }) {
     const meta = SERVER_STATUS_META[state.status];
     const port = state.urls.length > 0 ? portFromUrl(state.urls[0]) : null;
+    const isRow = layout === "row";
 
     return (
         <button
+            {...dragHandlers}
             type="button"
-            draggable
             onClick={onSelect}
-            onDragStart={(event) => {
-                event.dataTransfer.effectAllowed = "move";
-                event.dataTransfer.setData("text/plain", project.id);
-                onDragStart();
-            }}
-            onDragOver={(event) => {
-                event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
-                onDragOver();
-            }}
-            onDrop={(event) => {
-                event.preventDefault();
-                onDrop();
-            }}
-            onDragEnd={onDragEnd}
             title={project.name}
             aria-current={active ? "true" : undefined}
             className={cn(
-                "group flex w-full items-center gap-2 border-b border-line-soft px-3 py-2.5 text-left outline-none transition-colors focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset",
-                active ? "bg-panel-raised shadow-[inset_2px_0_0_0_var(--accent)]" : "hover:bg-white/2",
+                "group flex items-center gap-2 text-left outline-none transition-colors focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-inset",
+                isRow ? "w-52 shrink-0 rounded-[2px] border border-line bg-panel-inset px-2.5 py-2" : "w-full border-b border-line-soft px-3 py-2.5",
+                active
+                    ? isRow
+                        ? "border-accent/40 bg-panel-raised shadow-[inset_0_-2px_0_0_var(--accent)]"
+                        : "bg-panel-raised shadow-[inset_2px_0_0_0_var(--accent)]"
+                    : isRow
+                      ? "hover:border-line hover:bg-panel"
+                      : "hover:bg-white/2",
                 dragging && "opacity-40",
                 dragOver && !dragging && "bg-accent/6",
             )}

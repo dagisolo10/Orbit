@@ -2,13 +2,14 @@ import logo from "@/assets/logo.png";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useOrbit } from "@/contexts/orbit-context";
 import { useServers } from "@/contexts/servers-context";
+import { useDrag, type DragHandlers } from "@/hooks/use-drag";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { shortenPath } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { VIEW_META, type ViewId } from "@/types/navigation";
 import { Boxes, ChevronsLeft, ChevronsRight, FolderKanban, Layers, LayoutDashboard, Server, Settings, Star, type LucideIcon } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const NAV_ICON: Record<ViewId, LucideIcon> = {
     overview: LayoutDashboard,
@@ -20,7 +21,7 @@ const NAV_ICON: Record<ViewId, LucideIcon> = {
     settings: Settings,
 };
 
-const PRIMARY_NAV: ViewId[] = ["overview", "projects", "workspaces", "technologies", "favorites", "servers"];
+const PRIMARY_NAV: ViewId[] = ["overview", "projects", "workspaces", "servers", "technologies", "favorites"];
 
 const SIDEBAR_STORAGE_KEY = "orbit.sidebarCollapsed";
 
@@ -31,6 +32,9 @@ export function Sidebar({ view, onNavigate }: { view: ViewId; onNavigate: (view:
     const [collapsed, setCollapsed] = useLocalStorage<boolean>(SIDEBAR_STORAGE_KEY, false);
     // Narrow windows are always compact; the manual toggle only applies when there is room to expand.
     const compact = isNarrow || collapsed;
+
+    const [navItems, setNavItems] = useState(PRIMARY_NAV);
+    const { dragId, dragOverId, getDragHandlers } = useDrag({ items: navItems, onReorder: setNavItems });
 
     const runningServers = useMemo(() => Object.values(states).filter((state) => state.status === "running" || state.status === "starting").length, [states]);
 
@@ -78,10 +82,19 @@ export function Sidebar({ view, onNavigate }: { view: ViewId; onNavigate: (view:
             <Brand compact={compact} onNavigate={onNavigate} />
 
             <nav aria-label="Modules" className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
-                {!compact ? <p className="label-mono px-2 pb-2 text-ink-muted/70">MODULES</p> : null}
                 <div className="space-y-px">
-                    {PRIMARY_NAV.map((id) => (
-                        <NavItem key={id} id={id} active={view === id} compact={compact} count={counts[id]} onNavigate={onNavigate} />
+                    {navItems.map((id) => (
+                        <NavItem
+                            key={id}
+                            id={id}
+                            active={view === id}
+                            compact={compact}
+                            count={counts[id]}
+                            onNavigate={onNavigate}
+                            dragging={id === dragId}
+                            dragOver={id === dragOverId}
+                            dragHandlers={getDragHandlers(id)}
+                        />
                     ))}
                 </div>
             </nav>
@@ -123,14 +136,33 @@ function Brand({ compact, onNavigate }: { compact: boolean; onNavigate: (view: V
     );
 }
 
-function NavItem({ id, active, compact, count, onNavigate }: { id: ViewId; active: boolean; compact: boolean; count?: number; onNavigate: (view: ViewId) => void }) {
+function NavItem({
+    id,
+    active,
+    compact,
+    count,
+    onNavigate,
+    dragging = false,
+    dragOver = false,
+    dragHandlers,
+}: {
+    id: ViewId;
+    active: boolean;
+    compact: boolean;
+    count?: number;
+    dragging?: boolean;
+    dragOver?: boolean;
+    dragHandlers?: DragHandlers;
+    onNavigate: (view: ViewId) => void;
+}) {
     const Icon = NAV_ICON[id];
-    const { label, index } = VIEW_META[id];
+    const { label } = VIEW_META[id];
     const showCount = typeof count === "number" && count > 0;
 
     const button = (
         <button
             type="button"
+            {...dragHandlers}
             onClick={() => onNavigate(id)}
             aria-current={active ? "page" : undefined}
             aria-label={compact ? label : undefined}
@@ -138,22 +170,18 @@ function NavItem({ id, active, compact, count, onNavigate }: { id: ViewId; activ
                 "group relative flex h-9 w-full items-center rounded-[2px] text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-accent",
                 compact ? "justify-center px-0" : "gap-2.5 px-2",
                 active ? "bg-panel-raised text-ink" : "text-ink-soft hover:bg-panel/70 hover:text-ink",
+                dragging && "opacity-40",
+                dragOver && !dragging && "bg-accent/6",
             )}
         >
             {active ? <span aria-hidden className="absolute top-1/2 left-0 h-4 w-0.5 -translate-y-1/2 bg-accent" /> : null}
             <Icon className={cn("size-4 shrink-0 transition-colors", active ? "text-accent" : "text-ink-muted group-hover:text-ink-soft")} strokeWidth={1.8} />
-            {!compact ? (
+            {!compact && (
                 <>
                     <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-                    {showCount ? (
-                        <span className={cn("font-mono text-[10px] tabular-nums", active ? "text-ink-soft" : "text-ink-muted/80")}>{count > 99 ? "99+" : count}</span>
-                    ) : (
-                        <span aria-hidden className="font-mono text-[9px] tabular-nums text-ink-muted/35">
-                            {index}
-                        </span>
-                    )}
+                    {showCount && <span className={cn("font-mono text-[10px] tabular-nums", active ? "text-ink-soft" : "text-ink-muted/80")}>{count > 99 ? "99+" : count}</span>}
                 </>
-            ) : null}
+            )}
         </button>
     );
 

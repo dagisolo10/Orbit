@@ -8,7 +8,7 @@ export type CategoryMeta = {
 
 export const CATEGORY_ORDER: TechnologyCategory[] = ["language", "frontend", "backend", "styling", "database-orm", "tools"];
 
-export const CATEGORY_META: Record<TechnologyCategory, CategoryMeta> = {
+const CATEGORY_META: Record<TechnologyCategory, CategoryMeta> = {
     language: { label: "Languages", short: "LANG" },
     frontend: { label: "Frontend", short: "UI" },
     backend: { label: "Backend", short: "SRV" },
@@ -52,6 +52,64 @@ const TECH_LABELS: Record<string, string> = {
     esbuild: "esbuild",
     turborepo: "Turborepo",
     bun: "Bun",
+    vue: "Vue",
+    nuxt: "Nuxt",
+    svelte: "Svelte",
+    sveltekit: "SvelteKit",
+    angular: "Angular",
+    astro: "Astro",
+    solid: "SolidJS",
+    preact: "Preact",
+    qwik: "Qwik",
+    ember: "Ember",
+    remix: "Remix",
+    gatsby: "Gatsby",
+    alpinejs: "Alpine.js",
+    htmx: "htmx",
+    fastify: "Fastify",
+    koa: "Koa",
+    adonisjs: "AdonisJS",
+    graphql: "GraphQL",
+    apollo: "Apollo",
+    trpc: "tRPC",
+    sass: "Sass",
+    less: "Less",
+    postcss: "PostCSS",
+    bootstrap: "Bootstrap",
+    bulma: "Bulma",
+    chakra: "Chakra UI",
+    materialui: "Material UI",
+    radix: "Radix UI",
+    "styled-components": "styled-components",
+    postgres: "PostgreSQL",
+    mysql: "MySQL",
+    sqlite: "SQLite",
+    mongodb: "MongoDB",
+    redis: "Redis",
+    sequelize: "Sequelize",
+    typeorm: "TypeORM",
+    knex: "Knex",
+    supabase: "Supabase",
+    firebase: "Firebase",
+    storybook: "Storybook",
+    playwright: "Playwright",
+    cypress: "Cypress",
+    eslint: "ESLint",
+    prettier: "Prettier",
+    biome: "Biome",
+    zod: "Zod",
+    zustand: "Zustand",
+    redux: "Redux",
+    mobx: "MobX",
+    recoil: "Recoil",
+    axios: "Axios",
+    reactrouter: "React Router",
+    capacitor: "Capacitor",
+    ionic: "Ionic",
+    babel: "Babel",
+    swc: "SWC",
+    nx: "Nx",
+    lerna: "Lerna",
 };
 
 export function getCategoryMeta(category: TechnologyCategory | undefined): CategoryMeta {
@@ -68,7 +126,7 @@ export function getTechLabel(name: string): string {
     return formatTechName(trimmed);
 }
 
-export function formatTechName(name: string): string {
+function formatTechName(name: string): string {
     return name
         .split(/[-_]/)
         .filter(Boolean)

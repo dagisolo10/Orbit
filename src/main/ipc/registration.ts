@@ -4,7 +4,7 @@ import { serverService } from "@main/server/service";
 import { ServerConfigError } from "@main/server/store";
 import { openProject, ProjectActionError } from "@main/scanner/project-actions";
 import { ProjectScanError, scanProjects } from "@main/scanner/project-scanner";
-import { getLaunchPreferences, setLaunchPreference, SettingsError, getProjectsRootState, resolveProjectsRoot, setProjectsRoot } from "@main/settings/store";
+import { getLaunchPreferences, setLaunchPreference, SettingsError, getProjectsRootState, resolveProjectsRoot, setProjectsRoot, getScanExclusions, addScanExclusion, removeScanExclusion } from "@main/settings/store";
 import { IpcHandlers } from "@shared/types/ipc-handlers";
 import type { ServerProjectDraft } from "@shared/types/server";
 import type { LaunchKind, LaunchPreference } from "@shared/types/settings";
@@ -83,9 +83,10 @@ function toServerError(error: unknown, fallback: string): Error {
 export function registerIpcHandlers() {
     handleIpc("projects:scan", async () => {
         const rootPath = await resolveProjectsRoot();
+        const exclusions = await getScanExclusions();
 
         try {
-            const { projects, workspaces } = await scanProjects(rootPath);
+            const { projects, workspaces } = await scanProjects(rootPath, { excludedPaths: exclusions.paths });
             return { projects, workspaces, rootPath, scannedAt: Date.now() };
         } catch (error) {
             if (error instanceof ProjectScanError) {
@@ -181,6 +182,32 @@ export function registerIpcHandlers() {
             }
             console.error("[settings:set-projects-root] Unexpected failure", error);
             throw new Error("Orbit could not save that projects folder.");
+        }
+    });
+
+    handleIpc("settings:get-scan-exclusions", () => getScanExclusions());
+
+    handleIpc("settings:add-scan-exclusion", async (target) => {
+        try {
+            return await addScanExclusion(target);
+        } catch (error) {
+            if (error instanceof SettingsError) {
+                throw new Error(error.message);
+            }
+            console.error("[settings:add-scan-exclusion] Unexpected failure", error);
+            throw new Error("Orbit could not save that scan exclusion.");
+        }
+    });
+
+    handleIpc("settings:remove-scan-exclusion", async (target) => {
+        try {
+            return await removeScanExclusion(target);
+        } catch (error) {
+            if (error instanceof SettingsError) {
+                throw new Error(error.message);
+            }
+            console.error("[settings:remove-scan-exclusion] Unexpected failure", error);
+            throw new Error("Orbit could not remove that scan exclusion.");
         }
     });
 

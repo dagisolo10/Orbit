@@ -17,6 +17,18 @@ export type ProjectsRootState = {
     defaultPath: string;
 };
 
+/**
+ * Folders excluded from project scanning.
+ *
+ * `paths` holds absolute paths chosen by the user. `predefined` lists the
+ * directory names the scanner always ignores (e.g. `node_modules`), surfaced
+ * so the settings UI can explain what is skipped automatically.
+ */
+export type ScanExclusionsState = {
+    paths: string[];
+    predefined: string[];
+};
+
 /** The launch actions Orbit can perform. File managers use the OS default for now. */
 export type LaunchKind = "editor" | "terminal";
 

@@ -5,8 +5,8 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 
 const TONE_ICON: Record<ToastTone, LucideIcon> = {
     info: Info,
-    success: CircleCheck,
     error: CircleAlert,
+    success: CircleCheck,
 };
 
 const TONE_COLOR: Record<ToastTone, string> = {
@@ -62,13 +62,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     return (
         <ToastContext.Provider value={value}>
             {children}
-            <div
-                className="pointer-events-none fixed bottom-4 z-100 flex flex-col gap-2"
-                style={{
-                    left: "calc(var(--sidebar-width, 0px) + 1rem)",
-                    width: "min(22rem, calc(100vw - var(--sidebar-width, 0px) - 2rem))",
-                }}
-            >
+            <div className="pointer-events-none fixed bottom-4 w-96 right-4 z-100 flex flex-col gap-2">
                 {toasts.map((item) => {
                     const Icon = TONE_ICON[item.tone];
                     return (
@@ -94,7 +88,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                                     type="button"
                                     onClick={() => dismiss(item.id)}
                                     aria-label="Dismiss notification"
-                                    className="inline-flex size-4 items-center justify-center rounded-[1px] text-ink-muted transition-colors hover:bg-white/[0.06] hover:text-ink"
+                                    className="inline-flex size-4 items-center justify-center rounded-[1px] text-ink-muted transition-colors hover:bg-white/6 hover:text-ink"
                                 >
                                     <X className="size-3" />
                                 </button>
